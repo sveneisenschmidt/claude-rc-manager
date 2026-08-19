@@ -21,12 +21,15 @@ enum ServerState: Equatable {
 }
 
 /// State machine for one folder's server (spec: States, Crash handling).
-/// Main-thread confined; all callbacks hop to the main queue.
+/// Main-thread confined: the exit callback hops to the main actor before it
+/// touches anything here. The output callback deliberately does NOT — it runs
+/// on the pty reader thread and writes straight to its LogWriter, which is
+/// internally locked, so no state of this class is read off the main actor.
 @MainActor
 final class ServerProcess {
     private(set) var folder: FolderConfig
     private(set) var state: ServerState = .stopped {
-        didSet { onStateChange?(state) }
+        didSet { if oldValue != state { onStateChange?(state) } }
     }
     var onStateChange: ((ServerState) -> Void)?
 
@@ -97,23 +100,28 @@ final class ServerProcess {
             // a live handle would keep writing into the rotated inode.
             logWriter?.close()
             logWriter = try? LogWriter(url: logURL)
+            // Captured by value: the pty thread must not reach through self
+            // for the writer. LogWriter serializes its own writes.
+            let writer = logWriter
             let argv = CommandBuilder.argv(for: folder, claudePath: claudePath)
-            let server = try launcher.launch(argv: argv, workingDirectory: folder.path)
+            let server = try launcher.launch(
+                argv: argv, workingDirectory: folder.path,
+                onOutput: { [writer] data in writer?.append(data) },
+                onExit: { [weak self] status in
+                    Task { @MainActor in self?.handleExit(status: status) }
+                })
             self.server = server
             startedAt = DispatchTime.now()
             state = .starting
-            server.onOutput = { [weak self] data in
-                self?.logWriter?.append(data)
-            }
-            server.onExit = { [weak self] status in
-                Task { @MainActor in self?.handleExit(status: status) }
-            }
             readinessTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64((self?.readinessDelay ?? 5) * 1e9))
                 guard !Task.isCancelled else { return }
                 if self?.state == .starting { self?.state = .running }
             }
         } catch {
+            // Nothing will ever write to this run's log: release the handle.
+            logWriter?.close()
+            logWriter = nil
             state = .failed("launch error")
         }
     }
@@ -133,6 +141,12 @@ final class ServerProcess {
 
     func killNow() {
         restartTask?.cancel()
+        restartTask = nil
+        readinessTask?.cancel()
+        readinessTask = nil
+        // A kill is a deliberate stop: the exit it triggers must not be
+        // mistaken for a crash and scheduled for restart.
+        userStopRequested = true
         server?.kill()
     }
 

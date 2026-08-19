@@ -2,29 +2,43 @@ import XCTest
 @testable import ClaudeRCManager
 
 final class ScriptLauncherTests: XCTestCase {
-    func testLaunchResolvesInnerPidAndStops() throws {
-        let launcher = ScriptLauncher()
-        let server = try launcher.launch(
-            argv: ["/usr/bin/script", "-q", "/dev/null", "/bin/sleep", "30"],
-            workingDirectory: NSTemporaryDirectory())
-
-        let exited = expectation(description: "exit")
-        server.onExit = { _ in exited.fulfill() }
-
-        // Inner pid resolves within ~2 s.
-        var inner: pid_t?
+    /// Polls for the inner pid, which resolves asynchronously via pgrep.
+    private func waitForInnerPid(_ server: RunningServer) -> pid_t? {
         for _ in 0..<30 {
-            if let pid = server.innerPid { inner = pid; break }
+            if let pid = server.innerPid { return pid }
             usleep(100_000)
         }
-        XCTAssertNotNil(inner, "inner pid must resolve")
+        return nil
+    }
+
+    /// True once `pid` no longer exists (kill 0 = existence probe).
+    private func waitUntilGone(_ pid: pid_t, timeout: TimeInterval = 3) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let result = Darwin.kill(pid, 0)
+            let err = errno
+            if result == -1 && err == ESRCH { return true }
+            usleep(100_000)
+        }
+        return false
+    }
+
+    func testLaunchResolvesInnerPidAndStops() throws {
+        let launcher = ScriptLauncher()
+        let exited = expectation(description: "exit")
+        let server = try launcher.launch(
+            argv: ["/usr/bin/script", "-q", "/dev/null", "/bin/sleep", "30"],
+            workingDirectory: NSTemporaryDirectory(),
+            onOutput: { _ in },
+            onExit: { _ in exited.fulfill() })
+
+        // Inner pid resolves within ~2 s.
+        let inner = try XCTUnwrap(waitForInnerPid(server), "inner pid must resolve")
 
         server.stop(gracePeriod: 2)
         wait(for: [exited], timeout: 5)
-        // The inner sleep itself must be gone (kill 0 = existence probe).
-        usleep(200_000)
-        XCTAssertEqual(Darwin.kill(inner!, 0), -1)
-        XCTAssertEqual(errno, ESRCH)
+        // The inner sleep itself must be gone, not just script.
+        XCTAssertTrue(waitUntilGone(inner), "inner process must be gone after stop")
     }
 
     /// script exits the moment its child detaches, so escalation may not key
@@ -35,23 +49,56 @@ final class ScriptLauncherTests: XCTestCase {
         let server = try launcher.launch(
             argv: ["/usr/bin/script", "-q", "/dev/null",
                    "/bin/bash", "-c", "trap '' TERM HUP; sleep 60"],
-            workingDirectory: NSTemporaryDirectory())
+            workingDirectory: NSTemporaryDirectory(),
+            onOutput: { _ in },
+            onExit: { _ in })
 
-        var inner: pid_t?
-        for _ in 0..<30 {
-            if let pid = server.innerPid { inner = pid; break }
-            usleep(100_000)
-        }
-        let innerPid = try XCTUnwrap(inner, "inner pid must resolve")
+        let inner = try XCTUnwrap(waitForInnerPid(server), "inner pid must resolve")
 
         server.stop(gracePeriod: 1)
+        XCTAssertTrue(waitUntilGone(inner),
+                      "inner process must be SIGKILLed after the grace period")
+    }
 
-        // SIGTERM is ignored; the grace-period SIGKILL must still land.
-        var gone = false
+    /// End to end through the real pipeline: pty output -> onOutput -> LogWriter
+    /// -> file on disk.
+    func testChildOutputReachesTheLogFile() throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let logURL = dir.appendingPathComponent("server.log")
+        let writer = try LogWriter(url: logURL)
+
+        let lock = NSLock()
+        var received = Data()
+        let exited = expectation(description: "exit")
+        let launcher = ScriptLauncher()
+        let server = try launcher.launch(
+            argv: ["/usr/bin/script", "-q", "/dev/null", "/bin/echo", "hello"],
+            workingDirectory: NSTemporaryDirectory(),
+            onOutput: { data in
+                writer.append(data)
+                lock.lock(); received.append(data); lock.unlock()
+            },
+            onExit: { _ in exited.fulfill() })
+
+        wait(for: [exited], timeout: 10)
+
+        // The last pty read can land just after the exit callback.
+        var sawOutput = false
         for _ in 0..<30 {
-            if Darwin.kill(innerPid, 0) == -1 && errno == ESRCH { gone = true; break }
+            lock.lock()
+            sawOutput = String(decoding: received, as: UTF8.self).contains("hello")
+            lock.unlock()
+            if sawOutput { break }
             usleep(100_000)
         }
-        XCTAssertTrue(gone, "inner process must be SIGKILLed after the grace period")
+        XCTAssertTrue(sawOutput, "pty output must reach the output callback")
+
+        writer.close()  // flushes the carry-over
+        let text = try String(contentsOf: logURL, encoding: .utf8)
+        XCTAssertTrue(text.contains("hello"), "log file must contain the child's output, got: \(text)")
+        XCTAssertFalse(server.pids.isEmpty)
     }
 }

@@ -1,16 +1,15 @@
+import Darwin
 import Foundation
 
 /// One running server's process handle, as seen by ServerProcess.
+/// The output and exit callbacks are supplied at launch time (see
+/// `ProcessLaunching`), so no output can be produced before they are wired up.
 protocol RunningServer: AnyObject {
     /// pid of the inner claude process (script's child), once resolved.
     var innerPid: pid_t? { get }
     /// All pids of this server's tree (script + inner child), for the
     /// external-scan exclusion.
     var pids: [pid_t] { get }
-    /// Called once when the process tree exits, with script's status.
-    var onExit: ((Int32) -> Void)? { get set }
-    /// Called with raw output chunks (pty stream).
-    var onOutput: ((Data) -> Void)? { get set }
     /// SIGTERM to the inner process group; SIGKILL after `gracePeriod`.
     func stop(gracePeriod: TimeInterval)
     /// Immediate SIGKILL to everything (quit deadline).
@@ -18,7 +17,12 @@ protocol RunningServer: AnyObject {
 }
 
 protocol ProcessLaunching {
-    func launch(argv: [String], workingDirectory: String) throws -> RunningServer
+    /// `onOutput` is called with raw pty chunks on a reader thread; `onExit`
+    /// once with script's status when the process tree exits. Both are
+    /// installed before the process starts.
+    func launch(argv: [String], workingDirectory: String,
+                onOutput: @escaping (Data) -> Void,
+                onExit: @escaping (Int32) -> Void) throws -> RunningServer
 }
 
 /// Real launcher: runs `script -q /dev/null ...`. Verified reality (spec:
@@ -28,11 +32,13 @@ protocol ProcessLaunching {
 final class ScriptLauncher: ProcessLaunching {
     final class Server: RunningServer {
         let process = Process()
-        var onExit: ((Int32) -> Void)?
-        var onOutput: ((Data) -> Void)?
         private let queue = DispatchQueue(label: "server-process")
         private let lock = NSLock()
         private var _innerPid: pid_t?
+        /// Start time of `_innerPid`, to detect pid recycling before signaling.
+        private var _innerStart: UInt64?
+        /// Queue-confined: keeps repeated stop() calls from stacking timers.
+        private var stopScheduled = false
 
         var innerPid: pid_t? {
             lock.lock(); defer { lock.unlock() }
@@ -46,7 +52,31 @@ final class ScriptLauncher: ProcessLaunching {
         }
 
         private func setInnerPid(_ pid: pid_t) {
-            lock.lock(); _innerPid = pid; lock.unlock()
+            let start = Self.startTime(of: pid)
+            lock.lock(); _innerPid = pid; _innerStart = start; lock.unlock()
+        }
+
+        /// Process start time in microseconds, the identity half of a pid:
+        /// pids are reused, start times effectively are not.
+        static func startTime(of pid: pid_t) -> UInt64? {
+            var info = proc_bsdinfo()
+            let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+            guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { return nil }
+            return UInt64(info.pbi_start_tvsec) * 1_000_000 + UInt64(info.pbi_start_tvusec)
+        }
+
+        /// Signals the inner process group — but only if the pid still refers
+        /// to the process we resolved. Between resolution and signaling the
+        /// inner process can exit and its pid be reused, and killpg against a
+        /// stranger's process group cannot be taken back.
+        private func signalInnerGroup(_ signal: Int32) {
+            lock.lock()
+            let pid = _innerPid
+            let recorded = _innerStart
+            lock.unlock()
+            guard let pid, let recorded,
+                  let current = Self.startTime(of: pid), current == recorded else { return }
+            killpg(pid, signal)
         }
 
         /// Blocking retry on `queue`; also used by stop() so a stop right
@@ -75,9 +105,10 @@ final class ScriptLauncher: ProcessLaunching {
             p.arguments = ["-P", String(parent)]
             let out = Pipe()
             p.standardOutput = out
-            try? p.run()
-            p.waitUntilExit()
+            guard (try? p.run()) != nil else { return nil }
+            // Read before waiting: a full pipe buffer would deadlock the child.
             let data = out.fileHandleForReading.readDataToEndOfFile()
+            p.waitUntilExit()
             guard let line = String(data: data, encoding: .utf8)?
                 .split(separator: "\n").first else { return nil }
             return pid_t(line.trimmingCharacters(in: .whitespaces))
@@ -85,30 +116,33 @@ final class ScriptLauncher: ProcessLaunching {
 
         func stop(gracePeriod: TimeInterval) {
             queue.async { [weak self] in
-                guard let self else { return }
+                guard let self, !self.stopScheduled else { return }
+                self.stopScheduled = true
                 // Wait for the inner pid if it has not resolved yet —
                 // signaling only script would orphan the inner claude.
-                if let pid = self.resolveInnerPidBlocking() {
+                if self.resolveInnerPidBlocking() != nil {
                     // Inner pid is its own group leader (login_tty session).
-                    killpg(pid, SIGTERM)
+                    self.signalInnerGroup(SIGTERM)
                 }
                 if self.process.isRunning { self.process.terminate() }
-            }
-            queue.asyncAfter(deadline: .now() + gracePeriod) { [weak self] in
-                guard let self else { return }
-                // script exits as soon as its child detaches, so its liveness
-                // says nothing about the inner claude: escalate on the inner
-                // pid (kill 0 = existence probe), which a TERM-trapping child
-                // keeps alive past the grace period.
-                if let pid = self.innerPid, Darwin.kill(pid, 0) == 0 {
-                    killpg(pid, SIGKILL)
+                // Grace period runs from the moment TERM was actually sent,
+                // not from the stop() call: resolving the pid can take a while.
+                self.queue.asyncAfter(deadline: .now() + gracePeriod) { [weak self] in
+                    guard let self else { return }
+                    // script exits as soon as its child detaches, so its
+                    // liveness says nothing about the inner claude: escalate
+                    // on the inner pid (kill 0 = existence probe), which a
+                    // TERM-trapping child keeps alive past the grace period.
+                    if let pid = self.innerPid, Darwin.kill(pid, 0) == 0 {
+                        self.signalInnerGroup(SIGKILL)
+                    }
+                    if self.process.isRunning { self.kill() }
                 }
-                if self.process.isRunning { self.kill() }
             }
         }
 
         func kill() {
-            if let pid = innerPid { killpg(pid, SIGKILL) }
+            signalInnerGroup(SIGKILL)
             if process.isRunning {
                 // script is not a group leader; signal the pid directly.
                 Darwin.kill(process.processIdentifier, SIGKILL)
@@ -116,7 +150,10 @@ final class ScriptLauncher: ProcessLaunching {
         }
     }
 
-    func launch(argv: [String], workingDirectory: String) throws -> RunningServer {
+    func launch(argv: [String], workingDirectory: String,
+                onOutput: @escaping (Data) -> Void,
+                onExit: @escaping (Int32) -> Void) throws -> RunningServer
+    {
         precondition(!argv.isEmpty)
         let server = Server()
         let p = server.process
@@ -127,13 +164,19 @@ final class ScriptLauncher: ProcessLaunching {
         let pipe = Pipe()
         p.standardOutput = pipe
         p.standardError = pipe
-        pipe.fileHandleForReading.readabilityHandler = { [weak server] handle in
+        // Handlers are installed before run(): a process that fails instantly
+        // would otherwise have its first chunk (the error message) dropped.
+        pipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            if !data.isEmpty { server?.onOutput?(data) }
+            guard !data.isEmpty else {
+                handle.readabilityHandler = nil  // EOF
+                return
+            }
+            onOutput(data)
         }
-        p.terminationHandler = { [weak server] proc in
+        p.terminationHandler = { proc in
             pipe.fileHandleForReading.readabilityHandler = nil
-            server?.onExit?(proc.terminationStatus)
+            onExit(proc.terminationStatus)
         }
         try p.run()
         server.resolveInnerPid()
