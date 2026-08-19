@@ -46,6 +46,9 @@ Click the terminal icon in the menu bar:
 
 - **Add Folder…** — pick a project folder; a settings window opens.
 - Per folder: **Start/Stop**, **Open Log**, **Settings…**, **Remove…**.
+- **Sessions** — a folder's row shows how many sessions its server reports
+  (`● running · 2 Sessions`). Stop, Stop All, Remove… and Quit ask before
+  they end running sessions.
 - **External servers** — remote-control processes started outside the app
   are listed read-only.
 - Logs live in `~/Library/Logs/ClaudeRCManager/`.
@@ -53,6 +56,10 @@ Click the terminal icon in the menu bar:
 ## Limitations
 
 - Force-quitting the app leaves servers running (regular quit stops them).
+- A server that has not reported a session count yet counts as empty, so a
+  stop in the first seconds after a start does not ask.
+- Logout, restart and shutdown stop the servers without asking; the sessions
+  end with the login session either way.
 - There are no downloadable releases; build from source with `make install`.
 
 ## Development
