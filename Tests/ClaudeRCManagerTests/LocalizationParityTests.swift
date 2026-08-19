@@ -10,12 +10,11 @@ import XCTest
 /// file, not one per language, so every table is read through
 /// `path(forResource:…forLocalization:)`.
 final class LocalizationParityTests: XCTestCase {
-    /// TODO: extend by "ja" and "zh-hans" as the remaining translation task
-    /// lands (zh-hans lowercase: SwiftPM lowercases lproj names in the
-    /// emitted bundle). A task that forgets to extend this set leaves the
-    /// test green on a missing locale — that is why it is hard-coded rather
-    /// than discovered.
-    private let expected: Set<String> = ["en", "de", "fr", "es", "it"]
+    /// The full shipped set ("zh-hans" lowercase: SwiftPM lowercases lproj
+    /// names in the emitted bundle, the source directory is `zh-Hans.lproj`).
+    /// A task that forgets to extend this set would leave the test green on a
+    /// missing locale — that is why it is hard-coded rather than discovered.
+    private let expected: Set<String> = ["en", "de", "fr", "es", "it", "ja", "zh-hans"]
 
     private func keys(_ locale: String) throws -> [String: String] {
         let path = try XCTUnwrap(L10n.bundle.path(
