@@ -37,7 +37,7 @@ Use the superpowers code-review flow rather than re-inventing it:
 ### Pre-push check
 
 Dispatch one token-efficient subagent with the branch diff. Its rubric:
-correctness (does the diff do what the spec/plan says), `ANTI-SLOP.md` for all
+correctness (does the diff do what the spec/plan says), `docs/ANTI-SLOP.md` for all
 prose in the diff (commits, docs, comments, user-facing strings), and build +
 test health (`swift build` and `swift test` ran green on the final state).
 Have it return findings grouped by severity (`blocker` / `nit` /
