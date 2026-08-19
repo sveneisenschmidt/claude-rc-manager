@@ -8,33 +8,33 @@ struct FolderSettingsView: View {
 
     var body: some View {
         Form {
-            TextField("Name", text: $folder.name)
-            LabeledContent("Path") {
+            TextField(L10n.t("settings.name"), text: $folder.name)
+            LabeledContent(L10n.t("settings.path")) {
                 Text(folder.path).truncationMode(.middle).lineLimit(1)
             }
-            Picker("Spawn mode", selection: $folder.spawnMode) {
+            Picker(L10n.t("settings.spawnMode"), selection: $folder.spawnMode) {
                 ForEach(SpawnMode.allCases, id: \.self) { Text($0.rawValue) }
             }
-            Toggle("Pre-create session in directory", isOn: $folder.createSessionInDir)
-            Stepper("Capacity: \(folder.capacity)", value: $folder.capacity, in: 1...128)
+            Toggle(L10n.t("settings.createSessionInDir"), isOn: $folder.createSessionInDir)
+            Stepper(L10n.t("settings.capacity", Int32(folder.capacity)), value: $folder.capacity, in: 1...128)
                 .disabled(folder.spawnMode == .session) // spec: disabled, not hidden
-            Picker("Permission mode", selection: $folder.permissionMode) {
-                Text("CLI default").tag(PermissionMode?.none)
+            Picker(L10n.t("settings.permissionMode"), selection: $folder.permissionMode) {
+                Text(L10n.t("settings.permissionMode.cliDefault")).tag(PermissionMode?.none)
                 ForEach(PermissionMode.allCases, id: \.self) {
                     Text($0.rawValue).tag(PermissionMode?.some($0))
                 }
             }
-            TextField("Extra arguments", text: $folder.extraArgs)
-            Toggle("Start automatically", isOn: $folder.autostart)
+            TextField(L10n.t("settings.extraArgs"), text: $folder.extraArgs)
+            Toggle(L10n.t("settings.autostart"), isOn: $folder.autostart)
             if folder.spawnMode != .session {
-                Toggle("Restart on crash", isOn: $folder.autoRestart)
+                Toggle(L10n.t("settings.autoRestart"), isOn: $folder.autoRestart)
             }
-            Text("Changes apply the next time the server starts.")
+            Text(L10n.t("settings.applyHint"))
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Spacer()
-                Button("Cancel", action: onCancel).keyboardShortcut(.cancelAction)
-                Button("Save") { onSave(folder) }.keyboardShortcut(.defaultAction)
+                Button(L10n.t("settings.cancel"), action: onCancel).keyboardShortcut(.cancelAction)
+                Button(L10n.t("settings.save")) { onSave(folder) }.keyboardShortcut(.defaultAction)
             }
         }
         .padding(20)
@@ -66,7 +66,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                     self?.close(id: folder.id)
                 },
                 onCancel: { [weak self] in self?.close(id: folder.id) })))
-        window.title = "\(folder.name) — Settings"
+        window.title = L10n.t("settings.title", folder.name)
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false
         windows[folder.id] = window

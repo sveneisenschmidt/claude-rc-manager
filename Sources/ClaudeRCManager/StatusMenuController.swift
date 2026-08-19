@@ -94,11 +94,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
         // Cached values only — no blocking CLI calls on the main thread.
         if cli.binaryPath == nil {
-            menu.addItem(disabled("⚠️ claude CLI not found — install Claude Code"))
+            menu.addItem(disabled(L10n.t("warning.cliNotFound")))
             menu.addItem(.separator())
         } else if !cachedLoggedIn {
-            menu.addItem(disabled("⚠️ Claude not logged in"))
-            let login = NSMenuItem(title: "Open login in Terminal…",
+            menu.addItem(disabled(L10n.t("warning.notLoggedIn")))
+            let login = NSMenuItem(title: L10n.t("menu.openLogin"),
                                    action: #selector(openLogin), keyEquivalent: "")
             login.target = self
             menu.addItem(login)
@@ -108,11 +108,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         case .ok:
             break
         case .recoveredFromCorrupt:
-            menu.addItem(disabled("⚠️ config.json was corrupt — moved to config.json.bak"))
+            menu.addItem(disabled(L10n.t("warning.configCorrupt")))
             menu.addItem(.separator())
         case .unreadable:
-            menu.addItem(disabled(
-                "⚠️ config.json could not be read or preserved — changes are not saved"))
+            menu.addItem(disabled(L10n.t("warning.configUnreadable")))
             menu.addItem(.separator())
         }
 
@@ -122,39 +121,39 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         if !manager.processes.isEmpty { menu.addItem(.separator()) }
 
         if !externalServers.isEmpty {
-            menu.addItem(disabled("External servers"))
+            menu.addItem(disabled(L10n.t("external.header")))
             for server in externalServers {
                 let name = (server.workingDirectory as NSString?)?.lastPathComponent
-                    ?? "pid \(server.pid)"
-                let item = disabled("\(name) — running (external)")
+                    ?? L10n.t("external.pidFallback", server.pid)
+                let item = disabled(L10n.t("external.row", name))
                 item.toolTip = server.workingDirectory ?? server.command
                 menu.addItem(item)
             }
             menu.addItem(.separator())
         }
 
-        let add = NSMenuItem(title: "Add Folder…", action: #selector(addFolder), keyEquivalent: "")
+        let add = NSMenuItem(title: L10n.t("menu.addFolder"), action: #selector(addFolder), keyEquivalent: "")
         add.target = self
         menu.addItem(add)
-        let startAll = NSMenuItem(title: "Start All", action: #selector(startAllAction), keyEquivalent: "")
+        let startAll = NSMenuItem(title: L10n.t("menu.startAll"), action: #selector(startAllAction), keyEquivalent: "")
         startAll.target = self
         menu.addItem(startAll)
-        let stopAll = NSMenuItem(title: "Stop All", action: #selector(stopAllAction), keyEquivalent: "")
+        let stopAll = NSMenuItem(title: L10n.t("menu.stopAll"), action: #selector(stopAllAction), keyEquivalent: "")
         stopAll.target = self
         menu.addItem(stopAll)
         menu.addItem(.separator())
 
-        let loginItem = NSMenuItem(title: "Start at Login",
+        let loginItem = NSMenuItem(title: L10n.t("menu.startAtLogin"),
                                    action: #selector(toggleLoginItem), keyEquivalent: "")
         loginItem.target = self
         loginItem.state = LoginItem.isEnabled ? .on : .off
         if !LoginItem.isAvailable {
             loginItem.action = nil
-            loginItem.toolTip = "Install to /Applications first"
+            loginItem.toolTip = L10n.t("menu.startAtLogin.tooltip")
         }
         menu.addItem(loginItem)
 
-        let quit = NSMenuItem(title: "Quit Claude RC Manager",
+        let quit = NSMenuItem(title: L10n.t("menu.quit"),
                               action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
     }
@@ -171,13 +170,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private func statusLabel(_ state: ServerState) -> String {
         switch state {
-        case .stopped: return "○ stopped"
-        case .starting: return "◐ starting"
-        case .running: return "● running"
-        case .stopping: return "◐ stopping"
-        case .restarting: return "◐ restarting…"
-        case .ended: return "○ ended"
-        case .failed(let reason): return "✕ failed (\(reason))"
+        case .stopped: return L10n.t("status.stopped")
+        case .starting: return L10n.t("status.starting")
+        case .running: return L10n.t("status.running")
+        case .stopping: return L10n.t("status.stopping")
+        case .restarting: return L10n.t("status.restarting")
+        case .ended: return L10n.t("status.ended")
+        case .failed(let reason): return L10n.t("status.failed", L10n.displayReason(reason))
         }
     }
 
@@ -189,24 +188,24 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         let submenu = NSMenu()
 
         let toggle = NSMenuItem(
-            title: process.state.isActive ? "Stop" : "Start",
+            title: L10n.t(process.state.isActive ? "menu.stop" : "menu.start"),
             action: #selector(toggleServer(_:)), keyEquivalent: "")
         toggle.target = self
         toggle.representedObject = folder.id
         submenu.addItem(toggle)
 
-        let log = NSMenuItem(title: "Open Log", action: #selector(openLog(_:)), keyEquivalent: "")
+        let log = NSMenuItem(title: L10n.t("menu.openLog"), action: #selector(openLog(_:)), keyEquivalent: "")
         log.target = self
         log.representedObject = folder.id
         submenu.addItem(log)
 
-        let settingsItem = NSMenuItem(title: "Settings…",
+        let settingsItem = NSMenuItem(title: L10n.t("menu.settings"),
                                       action: #selector(openSettings(_:)), keyEquivalent: "")
         settingsItem.target = self
         settingsItem.representedObject = folder.id
         submenu.addItem(settingsItem)
 
-        let remove = NSMenuItem(title: "Remove…", action: #selector(removeFolder(_:)), keyEquivalent: "")
+        let remove = NSMenuItem(title: L10n.t("menu.remove"), action: #selector(removeFolder(_:)), keyEquivalent: "")
         remove.target = self
         remove.representedObject = folder.id
         submenu.addItem(remove)
@@ -223,10 +222,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             guard !opened else { return }
             DispatchQueue.main.async {
                 let alert = NSAlert()
-                alert.messageText = "Could not open Terminal"
-                alert.informativeText = "Automation permission may be denied. "
-                    + "Allow it in System Settings > Privacy & Security > Automation, "
-                    + "or run `claude auth login` in a terminal yourself."
+                alert.messageText = L10n.t("alert.terminal.title")
+                alert.informativeText = L10n.t("alert.terminal.body")
                 NSApp.activate(ignoringOtherApps: true)
                 alert.runModal()
             }
@@ -269,10 +266,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         guard let id = sender.representedObject as? UUID,
               let process = manager.process(id: id) else { return }
         let alert = NSAlert()
-        alert.messageText = "Remove “\(process.folder.name)”?"
-        alert.informativeText = "The server is stopped and the folder removed from the list. The log file is kept."
-        alert.addButton(withTitle: "Remove")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = L10n.t("alert.remove.title", process.folder.name)
+        alert.informativeText = L10n.t("alert.remove.body")
+        alert.addButton(withTitle: L10n.t("alert.remove.confirm"))
+        alert.addButton(withTitle: L10n.t("alert.remove.cancel"))
         NSApp.activate(ignoringOtherApps: true)
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         process.stop()
@@ -298,7 +295,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         let canonical = Self.canonicalPath(path)
         guard !config.folders.contains(where: { Self.canonicalPath($0.path) == canonical }) else {
             let alert = NSAlert()
-            alert.messageText = "Folder already added"
+            alert.messageText = L10n.t("alert.duplicateFolder.title")
             alert.informativeText = path
             alert.runModal()
             return
@@ -327,7 +324,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     @objc private func toggleLoginItem() {
         if let message = LoginItem.toggle() {
             let alert = NSAlert()
-            alert.messageText = "Could not change login item"
+            alert.messageText = L10n.t("alert.loginItem.title")
             alert.informativeText = message
             alert.runModal()
         }
@@ -355,10 +352,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             guard !didWarnAboutSaveFailure else { return }
             didWarnAboutSaveFailure = true
             let alert = NSAlert()
-            alert.messageText = "Could not save settings"
+            alert.messageText = L10n.t("alert.saveFailed.title")
             alert.informativeText = configHealth == .unreadable
-                ? "The existing config.json could not be read or moved aside, so it is not overwritten. Changes apply until you quit."
-                : "\(error.localizedDescription) Changes apply until you quit."
+                ? L10n.t("alert.saveFailed.unreadable")
+                : L10n.t("alert.saveFailed.body", error.localizedDescription)
             NSApp.activate(ignoringOtherApps: true)
             alert.runModal()
         }

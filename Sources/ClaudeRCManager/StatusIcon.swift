@@ -18,9 +18,9 @@ enum StatusIcon {
         /// from here, so it must not be the same string for all buckets.
         var accessibilityDescription: String {
             switch self {
-            case .warning: return "Claude RC Manager — warning"
-            case .active: return "Claude RC Manager — active"
-            case .neutral: return "Claude RC Manager — idle"
+            case .warning: return L10n.t("a11y.warning")
+            case .active: return L10n.t("a11y.active")
+            case .neutral: return L10n.t("a11y.idle")
             }
         }
     }

@@ -24,7 +24,7 @@ enum LoginItem {
                 // register() succeeds but stays inert until the user approves
                 // it; without this the checkbox would silently do nothing.
                 if SMAppService.mainApp.status == .requiresApproval {
-                    return "Approve Claude RC Manager in System Settings > General > Login Items."
+                    return L10n.t("alert.loginItem.requiresApproval")
                 }
             }
             return nil

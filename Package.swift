@@ -3,11 +3,13 @@ import PackageDescription
 
 let package = Package(
     name: "ClaudeRCManager",
+    defaultLocalization: "en",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
             name: "ClaudeRCManager",
-            path: "Sources/ClaudeRCManager"
+            path: "Sources/ClaudeRCManager",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "ClaudeRCManagerTests",
