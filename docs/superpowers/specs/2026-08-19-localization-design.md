@@ -1,7 +1,7 @@
 # Localization — Design
 
 **Date:** 2026-08-19
-**Status:** Draft (revised after two-reviewer spec check, same day)
+**Status:** Approved (revised after two-reviewer spec check, same day)
 **Extends:** 2026-08-19-claude-rc-manager-design.md
 
 ## Purpose
