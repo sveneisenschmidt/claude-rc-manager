@@ -8,6 +8,8 @@
     <string>Claude RC Manager</string>
     <key>CFBundleIdentifier</key>
     <string>com.sveneisenschmidt.claude-rc-manager</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
     <key>CFBundleExecutable</key>
     <string>ClaudeRCManager</string>
     <key>CFBundlePackageType</key>

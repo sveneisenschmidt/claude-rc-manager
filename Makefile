@@ -15,6 +15,16 @@ app: build
 	mkdir -p "$(APP_DIR)/Contents/MacOS"
 	cp Resources/Info.plist "$(APP_DIR)/Contents/Info.plist"
 	cp "$(BUILD_DIR)/ClaudeRCManager" "$(APP_DIR)/Contents/MacOS/ClaudeRCManager"
+	mkdir -p "$(APP_DIR)/Contents/Resources"
+	for lproj in "$(BUILD_DIR)/ClaudeRCManager_ClaudeRCManager.bundle/"*.lproj; do \
+		cp -R "$$lproj" "$(APP_DIR)/Contents/Resources/"; \
+	done
+	for lang in en de fr es it ja zh-hans; do \
+		test -f "$(APP_DIR)/Contents/Resources/$$lang.lproj/Localizable.strings" \
+			|| { echo "missing $$lang.lproj/Localizable.strings"; exit 1; }; \
+		cp "Resources/InfoPlist/$$lang.lproj/InfoPlist.strings" \
+			"$(APP_DIR)/Contents/Resources/$$lang.lproj/"; \
+	done
 	codesign --force --sign - "$(APP_DIR)"
 	@echo "Built: $(APP_DIR)"
 
