@@ -27,7 +27,7 @@ enum ArgsTokenizer {
             } else if c == "\\" {
                 current.append(it.next() ?? "\\")
                 hasContent = true
-            } else if c == " " || c == "\t" {
+            } else if c.isWhitespace {
                 if hasContent || !current.isEmpty {
                     tokens.append(current)
                     current = ""

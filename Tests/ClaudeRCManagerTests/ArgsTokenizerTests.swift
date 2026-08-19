@@ -10,6 +10,7 @@ final class ArgsTokenizerTests: XCTestCase {
     func testWhitespaceSplit() {
         XCTAssertEqual(ArgsTokenizer.tokenize("--debug-file /tmp/x.log"),
                        ["--debug-file", "/tmp/x.log"])
+        XCTAssertEqual(ArgsTokenizer.tokenize("--a\n--b"), ["--a", "--b"])
     }
 
     func testDoubleQuotes() {
