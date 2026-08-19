@@ -78,6 +78,14 @@ final class ServerProcess {
     /// The folder configuration the current run was launched with.
     private var launchedFolder: FolderConfig?
 
+    /// Last count the running server reported, nil while unknown. Cleared
+    /// when a run ends, which is the only place it needs clearing: a new run
+    /// can only start once the previous one is over.
+    private(set) var sessionCount: Int?
+    /// One counter per run: a chunk can still be in flight when a run ends,
+    /// and its report must not survive into the next one.
+    private var counter: SessionCounter?
+
     func start(manual: Bool) {
         // `.restarting` counts as active (the server is still "on"), but the
         // scheduled auto-restart starts out of exactly that state, as does a
@@ -109,9 +117,22 @@ final class ServerProcess {
             // for the writer. LogWriter serializes its own writes.
             let writer = logWriter
             let argv = CommandBuilder.argv(for: folder, claudePath: claudePath)
+            let counter = SessionCounter()
+            self.counter = counter
+            // [weak counter]: the counter owns this closure, so a strong
+            // capture would keep one counter per run alive for the app's life.
+            counter.onChange = { [weak self, weak counter] value in
+                Task { @MainActor [weak self, weak counter] in
+                    guard let counter else { return }
+                    self?.apply(count: value, from: counter)
+                }
+            }
             let server = try launcher.launch(
                 argv: argv, workingDirectory: folder.path,
-                onOutput: { [writer] data in writer?.append(data) },
+                onOutput: { [writer, counter] data in
+                    writer?.append(data)
+                    counter.feed(data)
+                },
                 onExit: { [weak self] status in
                     // Inner capture list copies the weak binding: older
                     // compilers (CI's macos-14 Swift) reject referencing the
@@ -159,8 +180,16 @@ final class ServerProcess {
         server?.kill()
     }
 
+    /// Ignores a report from a superseded run.
+    private func apply(count: Int, from source: SessionCounter) {
+        guard source === counter else { return }
+        sessionCount = count
+    }
+
     private func handleExit(status: Int32) {
         server = nil
+        sessionCount = nil
+        counter = nil
         // This run is over: its readiness timer must not promote a later run.
         readinessTask?.cancel()
         readinessTask = nil
@@ -198,6 +227,18 @@ final class ServerProcess {
                 self.start(manual: false)
             }
         }
+    }
+
+    /// Sessions running inside this server, as far as the app can know.
+    /// The single number the menu row and the stop warning both use.
+    var activeSessions: Int {
+        // The run's own snapshot, the same rule handleExit follows: a settings
+        // edit mid-run must not change how this run is counted. No snapshot
+        // means no live run (waiting out a restart backoff), hence no sessions.
+        guard state.isActive, let ranAs = launchedFolder else { return 0 }
+        // Session mode prints no capacity line: the server is the session.
+        if ranAs.spawnMode == .session { return 1 }
+        return sessionCount ?? 0
     }
 
     // Used by ServerManager and the external-scan exclusion.

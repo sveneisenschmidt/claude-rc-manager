@@ -137,4 +137,86 @@ final class ServerProcessTests: XCTestCase {
         sp.start(manual: true)
         XCTAssertEqual(sp.state, .failed("launch error"))
     }
+
+    // MARK: session count
+
+    func testCountFromOutputIsApplied() async throws {
+        let (sp, launcher) = makeSUT()
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "must reach running")
+        launcher.servers[0].onOutput?(Data("Capacity: 2/32".utf8))
+        try await waitFor({ sp.sessionCount == 2 }, "reported count must be applied")
+        XCTAssertEqual(sp.activeSessions, 2)
+    }
+
+    func testUnknownCountMeansNoSessions() async throws {
+        let (sp, _) = makeSUT()
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "must reach running")
+        XCTAssertNil(sp.sessionCount)
+        XCTAssertEqual(sp.activeSessions, 0)
+    }
+
+    func testStoppedServerHasNoSessions() {
+        let (sp, _) = makeSUT()
+        XCTAssertEqual(sp.state, .stopped)
+        XCTAssertEqual(sp.activeSessions, 0)
+    }
+
+    func testSessionSpawnModeCountsAsOne() async throws {
+        let (sp, _) = makeSUT(spawnMode: .session)
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "must reach running")
+        XCTAssertNil(sp.sessionCount)
+        XCTAssertEqual(sp.activeSessions, 1)
+    }
+
+    func testSpawnModeIsReadFromTheRunSnapshot() async throws {
+        let (sp, _) = makeSUT(spawnMode: .session)
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "must reach running")
+        var edited = sp.folder
+        edited.spawnMode = .worktree
+        sp.update(folder: edited)
+        XCTAssertEqual(sp.activeSessions, 1,
+                       "an edit during the run must not change how this run counts")
+    }
+
+    func testCountIsClearedOnExit() async throws {
+        let (sp, launcher) = makeSUT(autoRestart: false)
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "must reach running")
+        launcher.servers[0].onOutput?(Data("Capacity: 3/32".utf8))
+        try await waitFor({ sp.sessionCount == 3 }, "reported count must be applied")
+        launcher.servers[0].exitNow(1)
+        try await waitFor({ sp.sessionCount == nil }, "exit must clear the count")
+        XCTAssertEqual(sp.activeSessions, 0)
+    }
+
+    func testWaitingForARestartHasNoSessions() async throws {
+        let (sp, launcher) = makeSUT()
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "must reach running")
+        launcher.servers[0].onOutput?(Data("Capacity: 2/32".utf8))
+        try await waitFor({ sp.sessionCount == 2 }, "reported count must be applied")
+        launcher.servers[0].exitNow(1)
+        try await waitFor({ sp.state == .restarting }, "must schedule a restart")
+        // .restarting counts as active, but no process is running.
+        XCTAssertEqual(sp.activeSessions, 0)
+    }
+
+    func testReportFromASupersededRunIsIgnored() async throws {
+        let (sp, launcher) = makeSUT(autoRestart: false)
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "must reach running")
+        let firstRun = launcher.servers[0]
+        firstRun.exitNow(1)
+        try await waitFor({ sp.state == .failed("exited, status 1") }, "must fail")
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "second run must reach running")
+        // The old run's pty chunk arrives late.
+        firstRun.onOutput?(Data("Capacity: 9/32".utf8))
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertNil(sp.sessionCount, "a superseded run must not set the count")
+    }
 }
