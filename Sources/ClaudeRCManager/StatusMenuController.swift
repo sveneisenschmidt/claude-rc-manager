@@ -186,10 +186,19 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         }
     }
 
+    /// State plus the session count, when the server reported one.
+    private func rowLabel(for process: ServerProcess) -> String {
+        let state = statusLabel(process.state)
+        guard let suffix = SessionAlertText.menuSuffix(count: process.activeSessions) else {
+            return state
+        }
+        return "\(state) \(suffix)"
+    }
+
     private func folderItem(for process: ServerProcess) -> NSMenuItem {
         let folder = process.folder
         let item = NSMenuItem(
-            title: "\(folder.name)   \(statusLabel(process.state))",
+            title: "\(folder.name)   \(rowLabel(for: process))",
             action: nil, keyEquivalent: "")
         let submenu = NSMenu()
 
@@ -240,6 +249,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         guard let id = sender.representedObject as? UUID,
               let process = manager.process(id: id) else { return }
         if process.state.isActive {
+            guard SessionAlert.confirm(scope: .stop,
+                                       entries: ServerManager.sessionEntries(of: [process]),
+                                       enumerate: false) else { return }
             process.stop()
         } else {
             // Resolve + auth off the main thread, then start on main.
@@ -273,11 +285,21 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
               let process = manager.process(id: id) else { return }
         let alert = NSAlert()
         alert.messageText = L10n.t("alert.remove.title", process.folder.name)
-        alert.informativeText = L10n.t("alert.remove.body")
-        alert.addButton(withTitle: L10n.t("alert.remove.confirm"))
+        // One dialog, not two: the sessions warning joins the existing
+        // confirmation instead of stacking on top of it.
+        if let sessions = SessionAlertText.removeSentence(count: process.activeSessions) {
+            alert.informativeText = sessions + " " + L10n.t("alert.remove.body")
+        } else {
+            alert.informativeText = L10n.t("alert.remove.body")
+        }
+        // Cancel first, like the sessions warning: the more destructive of
+        // the two dialogs must not have the riskier default.
         alert.addButton(withTitle: L10n.t("alert.remove.cancel"))
+        alert.addButton(withTitle: L10n.t("alert.remove.confirm"))
+        alert.buttons[1].hasDestructiveAction = true
+        alert.buttons[0].keyEquivalent = "\u{1b}"
         NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard alert.runModal() == .alertSecondButtonReturn else { return }
         process.stop()
         // An open settings window for this folder still holds the folder
         // snapshot it opened with; its Save would resurrect the removed
@@ -325,7 +347,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         }
     }
 
-    @objc private func stopAllAction() { manager.stopAll() }
+    @objc private func stopAllAction() {
+        guard SessionAlert.confirm(scope: .stop, entries: manager.activeSessionEntries)
+        else { return }
+        manager.stopAll()
+    }
 
     /// Quit goes through our own selector rather than the standard
     /// `terminate:` action so macOS 26 does not decorate the item with an
