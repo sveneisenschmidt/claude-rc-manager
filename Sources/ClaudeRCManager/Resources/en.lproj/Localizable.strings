@@ -51,7 +51,7 @@
 "settings.path" = "Path";
 "settings.spawnMode" = "Spawn mode";
 "settings.createSessionInDir" = "Pre-create session in directory";
-"settings.capacity" = "Capacity: %d";
+"settings.capacity" = "Capacity: %@";
 "settings.permissionMode" = "Permission mode";
 "settings.permissionMode.cliDefault" = "CLI default";
 "settings.extraArgs" = "Extra arguments";

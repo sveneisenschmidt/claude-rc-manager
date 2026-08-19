@@ -71,7 +71,7 @@ final class L10nTests: XCTestCase {
         XCTAssertTrue(L10n.t("settings.title", "demo").contains("demo"))
         // %@ with a pre-rendered String: pids never get locale digit grouping.
         XCTAssertTrue(L10n.t("external.pidFallback", String(4711)).contains("4711"))
-        XCTAssertTrue(L10n.t("settings.capacity", Int32(12)).contains("12"))
+        XCTAssertTrue(L10n.t("settings.capacity", String(12)).contains("12"))
     }
 
     func testDisplayReasonMapsAllShapes() {

@@ -11,7 +11,7 @@
 "menu.startAtLogin" = "Apri al login";
 "menu.startAtLogin.tooltip" = "Installa prima l'app in /Applications";
 "menu.quit" = "Esci da Claude RC Manager";
-"menu.openLogin" = "Accedi in Terminal…";
+"menu.openLogin" = "Accedi nel Terminale…";
 "menu.start" = "Avvia";
 "menu.stop" = "Arresta";
 "menu.openLog" = "Apri il log";
@@ -52,7 +52,7 @@
 "settings.path" = "Percorso";
 "settings.spawnMode" = "Modalità di avvio";
 "settings.createSessionInDir" = "Crea in anticipo la sessione nella cartella";
-"settings.capacity" = "Capacità: %d";
+"settings.capacity" = "Capacità: %@";
 "settings.permissionMode" = "Modalità di autorizzazione";
 "settings.permissionMode.cliDefault" = "Valore predefinito della CLI";
 "settings.extraArgs" = "Argomenti aggiuntivi";
@@ -63,7 +63,7 @@
 "settings.cancel" = "Annulla";
 
 /* MARK: alerts */
-"alert.terminal.title" = "Impossibile aprire Terminal";
+"alert.terminal.title" = "Impossibile aprire il Terminale";
 "alert.terminal.body" = "L'autorizzazione all'automazione potrebbe essere negata. Puoi concederla in Impostazioni di Sistema > Privacy e sicurezza > Automazione, oppure eseguire tu stesso `claude auth login` in un terminale.";
 "alert.remove.title" = "Rimuovere “%@”?";
 "alert.remove.body" = "Il server viene arrestato e la cartella rimossa dall'elenco. Il file di log viene mantenuto.";

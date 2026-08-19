@@ -16,7 +16,7 @@ struct FolderSettingsView: View {
                 ForEach(SpawnMode.allCases, id: \.self) { Text($0.rawValue) }
             }
             Toggle(L10n.t("settings.createSessionInDir"), isOn: $folder.createSessionInDir)
-            Stepper(L10n.t("settings.capacity", Int32(folder.capacity)), value: $folder.capacity, in: 1...128)
+            Stepper(L10n.t("settings.capacity", String(folder.capacity)), value: $folder.capacity, in: 1...128)
                 .disabled(folder.spawnMode == .session) // spec: disabled, not hidden
             Picker(L10n.t("settings.permissionMode"), selection: $folder.permissionMode) {
                 Text(L10n.t("settings.permissionMode.cliDefault")).tag(PermissionMode?.none)

@@ -52,7 +52,7 @@
 "settings.path" = "Ruta";
 "settings.spawnMode" = "Modo de inicio";
 "settings.createSessionInDir" = "Crear la sesión en la carpeta de antemano";
-"settings.capacity" = "Capacidad: %d";
+"settings.capacity" = "Capacidad: %@";
 "settings.permissionMode" = "Modo de permisos";
 "settings.permissionMode.cliDefault" = "Valor por omisión de la CLI";
 "settings.extraArgs" = "Argumentos adicionales";

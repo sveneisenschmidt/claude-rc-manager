@@ -52,7 +52,7 @@
 "settings.path" = "Pfad";
 "settings.spawnMode" = "Startmodus";
 "settings.createSessionInDir" = "Sitzung im Ordner vorab anlegen";
-"settings.capacity" = "Kapazität: %d";
+"settings.capacity" = "Kapazität: %@";
 "settings.permissionMode" = "Berechtigungsmodus";
 "settings.permissionMode.cliDefault" = "CLI-Standard";
 "settings.extraArgs" = "Zusätzliche Argumente";

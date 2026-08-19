@@ -52,7 +52,7 @@
 "settings.path" = "Chemin";
 "settings.spawnMode" = "Mode de lancement";
 "settings.createSessionInDir" = "Créer la session dans le dossier au préalable";
-"settings.capacity" = "Capacité : %d";
+"settings.capacity" = "Capacité : %@";
 "settings.permissionMode" = "Mode d'autorisation";
 "settings.permissionMode.cliDefault" = "Valeur par défaut de la CLI";
 "settings.extraArgs" = "Arguments supplémentaires";
