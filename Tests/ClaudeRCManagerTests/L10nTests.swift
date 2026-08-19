@@ -31,6 +31,9 @@ final class L10nTests: XCTestCase {
         XCTAssertEqual(try english("external.pidFallback"), "pid %@")
         XCTAssertEqual(try english("settings.title"), "%@ — Settings")
         XCTAssertEqual(try english("a11y.warning"), "Claude RC Manager — warning")
+        XCTAssertEqual(try english("alert.sessions.quit.title.other"),
+                       "Quit with %d active sessions?")
+        XCTAssertEqual(try english("menu.sessions.one"), "· 1 Session")
     }
 
     /// Every scope bullet must map to a key; a typo'd key silently renders
@@ -56,6 +59,13 @@ final class L10nTests: XCTestCase {
             "alert.remove.cancel", "alert.duplicateFolder.title",
             "alert.saveFailed.title", "alert.saveFailed.unreadable", "alert.saveFailed.body",
             "alert.loginItem.title", "alert.loginItem.requiresApproval",
+            "alert.sessions.quit.title.one", "alert.sessions.quit.title.other",
+            "alert.sessions.stop.title.one", "alert.sessions.stop.title.other",
+            "alert.sessions.body.list", "alert.sessions.body",
+            "alert.sessions.confirm.quit", "alert.sessions.confirm.stop",
+            "alert.sessions.cancel",
+            "alert.remove.sessions.one", "alert.remove.sessions.other",
+            "menu.sessions.one", "menu.sessions.other",
             "a11y.warning", "a11y.active", "a11y.idle",
         ]
         for key in keys {

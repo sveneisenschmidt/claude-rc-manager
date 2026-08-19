@@ -80,3 +80,18 @@
 "a11y.warning" = "Claude RC Manager — avertissement";
 "a11y.active" = "Claude RC Manager — actif";
 "a11y.idle" = "Claude RC Manager — inactif";
+
+/* MARK: active-session warning */
+"alert.sessions.quit.title.one" = "Quitter avec 1 session active ?";
+"alert.sessions.quit.title.other" = "Quitter avec %d sessions actives ?";
+"alert.sessions.stop.title.one" = "Arrêter avec 1 session active ?";
+"alert.sessions.stop.title.other" = "Arrêter avec %d sessions actives ?";
+"alert.sessions.body.list" = "Concernés : %@. Les sessions en cours sur le téléphone se terminent immédiatement.";
+"alert.sessions.body" = "Les sessions en cours sur le téléphone se terminent immédiatement.";
+"alert.sessions.confirm.quit" = "Quitter quand même";
+"alert.sessions.confirm.stop" = "Arrêter quand même";
+"alert.sessions.cancel" = "Annuler";
+"alert.remove.sessions.one" = "Ce dossier a 1 session active. Elle se termine avec le serveur.";
+"alert.remove.sessions.other" = "Ce dossier a %d sessions actives. Elles se terminent avec le serveur.";
+"menu.sessions.one" = "· 1 session";
+"menu.sessions.other" = "· %d sessions";

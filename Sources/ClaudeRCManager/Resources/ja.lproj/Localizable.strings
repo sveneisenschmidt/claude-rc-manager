@@ -81,3 +81,18 @@
 "a11y.warning" = "Claude RC Manager — 警告";
 "a11y.active" = "Claude RC Manager — アクティブ";
 "a11y.idle" = "Claude RC Manager — 待機中";
+
+/* MARK: active-session warning */
+"alert.sessions.quit.title.one" = "アクティブなセッションが1件あります。終了しますか？";
+"alert.sessions.quit.title.other" = "アクティブなセッションが%d件あります。終了しますか？";
+"alert.sessions.stop.title.one" = "アクティブなセッションが1件あります。停止しますか？";
+"alert.sessions.stop.title.other" = "アクティブなセッションが%d件あります。停止しますか？";
+"alert.sessions.body.list" = "対象: %@。実行中のスマートフォンのセッションはすぐに終了します。";
+"alert.sessions.body" = "実行中のスマートフォンのセッションはすぐに終了します。";
+"alert.sessions.confirm.quit" = "終了する";
+"alert.sessions.confirm.stop" = "停止する";
+"alert.sessions.cancel" = "キャンセル";
+"alert.remove.sessions.one" = "このフォルダにはアクティブなセッションが1件あります。サーバーとともに終了します。";
+"alert.remove.sessions.other" = "このフォルダにはアクティブなセッションが%d件あります。サーバーとともに終了します。";
+"menu.sessions.one" = "· 1 セッション";
+"menu.sessions.other" = "· %d セッション";

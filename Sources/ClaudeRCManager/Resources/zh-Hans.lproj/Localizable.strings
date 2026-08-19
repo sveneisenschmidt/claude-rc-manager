@@ -82,3 +82,18 @@
 "a11y.warning" = "Claude RC Manager — 警告";
 "a11y.active" = "Claude RC Manager — 活跃";
 "a11y.idle" = "Claude RC Manager — 空闲";
+
+/* MARK: active-session warning */
+"alert.sessions.quit.title.one" = "有 1 个活动会话，仍要退出吗？";
+"alert.sessions.quit.title.other" = "有 %d 个活动会话，仍要退出吗？";
+"alert.sessions.stop.title.one" = "有 1 个活动会话，仍要停止吗？";
+"alert.sessions.stop.title.other" = "有 %d 个活动会话，仍要停止吗？";
+"alert.sessions.body.list" = "受影响：%@。手机上正在进行的会话会立即结束。";
+"alert.sessions.body" = "手机上正在进行的会话会立即结束。";
+"alert.sessions.confirm.quit" = "仍然退出";
+"alert.sessions.confirm.stop" = "仍然停止";
+"alert.sessions.cancel" = "取消";
+"alert.remove.sessions.one" = "此文件夹有 1 个活动会话，会随服务器一起结束。";
+"alert.remove.sessions.other" = "此文件夹有 %d 个活动会话，会随服务器一起结束。";
+"menu.sessions.one" = "· 1 个会话";
+"menu.sessions.other" = "· %d 个会话";
