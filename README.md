@@ -63,4 +63,5 @@ swift run       # run from the checkout (menu bar icon, no Dock icon)
 make build      # build and sign the .app bundle
 make install    # uninstall old copy, then install to /Applications
 make uninstall  # remove from /Applications (config and logs stay)
+make reinstall  # stop the running app, install fresh, launch it
 ```
