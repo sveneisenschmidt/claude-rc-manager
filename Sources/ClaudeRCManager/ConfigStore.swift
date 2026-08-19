@@ -36,10 +36,26 @@ final class ConfigStore {
             // — treat like a corrupt file rather than silently starting fresh.
             return recoverFromCorrupt()
         }
-        if let config = try? JSONDecoder().decode(AppConfig.self, from: data) {
+        if var config = try? JSONDecoder().decode(AppConfig.self, from: data) {
+            config.folders = Self.deduplicatingIDs(config.folders)
             return .loaded(config)
         }
         return recoverFromCorrupt()
+    }
+
+    /// A hand-edited (or hand-copied) config.json can repeat a folder id. Ids
+    /// key the menu, the settings windows, and process lookup, so a duplicate
+    /// would make one of the two folders unreachable. Keep the first
+    /// occurrence, re-key the rest, preserve order.
+    private static func deduplicatingIDs(_ folders: [FolderConfig]) -> [FolderConfig] {
+        var seen: Set<UUID> = []
+        return folders.map { folder in
+            var folder = folder
+            while !seen.insert(folder.id).inserted {
+                folder.id = UUID()
+            }
+            return folder
+        }
     }
 
     /// Attempts to preserve the unreadable/corrupt file by moving it aside.

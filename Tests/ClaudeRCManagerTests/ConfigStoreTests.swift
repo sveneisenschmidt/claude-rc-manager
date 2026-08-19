@@ -66,4 +66,29 @@ final class ConfigStoreTests: XCTestCase {
         try store.save(second)
         XCTAssertEqual(store.load(), .loaded(second))
     }
+
+    func testDuplicateFolderIDsAreRekeyedOnLoad() throws {
+        // A hand-copied entry in config.json repeats an id; ids key the menu
+        // and process lookup, so the duplicate must be re-keyed on load.
+        var a = FolderConfig(path: "/tmp/a")
+        var b = FolderConfig(path: "/tmp/b")
+        b.id = a.id
+        var c = FolderConfig(path: "/tmp/c")
+        c.id = a.id
+        var config = AppConfig()
+        config.folders = [a, b, c]
+        let store = ConfigStore(directory: dir)
+        try store.save(config)
+
+        guard case .loaded(let loaded) = store.load() else {
+            return XCTFail("a well-formed file must load")
+        }
+        XCTAssertEqual(loaded.folders.map(\.path), ["/tmp/a", "/tmp/b", "/tmp/c"],
+                       "order must be preserved")
+        XCTAssertEqual(Set(loaded.folders.map(\.id)).count, 3, "ids must be unique")
+        XCTAssertEqual(loaded.folders[0].id, a.id, "the first occurrence keeps its id")
+        // Everything else about the duplicates is untouched.
+        a.id = loaded.folders[0].id
+        XCTAssertEqual(loaded.folders[0], a)
+    }
 }

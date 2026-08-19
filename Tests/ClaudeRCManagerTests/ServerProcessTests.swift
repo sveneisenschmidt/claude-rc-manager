@@ -1,35 +1,7 @@
 import XCTest
 @testable import ClaudeRCManager
 
-final class FakeServer: RunningServer {
-    var innerPid: pid_t? = 4242
-    var pids: [pid_t] { [111, 4242] } // 111 stands in for the script pid
-    var onExit: ((Int32) -> Void)?
-    var onOutput: ((Data) -> Void)?
-    var stopped = false
-    var killed = false
-    func stop(gracePeriod: TimeInterval) { stopped = true }
-    func kill() { killed = true }
-    func exitNow(_ status: Int32) { onExit?(status) }
-}
-
-final class FakeLauncher: ProcessLaunching {
-    var servers: [FakeServer] = []
-    var launchCount = 0
-    var error: Error?
-    func launch(argv: [String], workingDirectory: String,
-                onOutput: @escaping @Sendable (Data) -> Void,
-                onExit: @escaping @Sendable (Int32) -> Void) throws -> RunningServer
-    {
-        if let error { throw error }
-        launchCount += 1
-        let s = FakeServer()
-        s.onOutput = onOutput
-        s.onExit = onExit
-        servers.append(s)
-        return s
-    }
-}
+// FakeServer, FakeLauncher and waitFor live in TestSupport.swift.
 
 @MainActor
 final class ServerProcessTests: XCTestCase {
@@ -47,27 +19,6 @@ final class ServerProcessTests: XCTestCase {
             readinessDelay: 0.05,
             backoffScale: 0.2)
         return (sp, launcher)
-    }
-
-    /// Polls instead of sleeping a fixed span: callbacks hop to the main actor
-    /// and timers fire on their own schedule, so an assertion right after a
-    /// fixed sleep is a race in both directions (too early, or so late that a
-    /// transient state such as `.restarting` is already gone).
-    struct WaitTimeout: Error {}
-
-    /// Throws on timeout so the test stops instead of indexing into state
-    /// that never materialized (a trap would kill the whole test binary).
-    func waitFor(_ condition: @MainActor () -> Bool, timeout: TimeInterval = 3,
-                 _ message: String,
-                 file: StaticString = #filePath, line: UInt = #line) async throws
-    {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if condition() { return }
-            try? await Task.sleep(nanoseconds: 2_000_000)
-        }
-        XCTFail(message, file: file, line: line)
-        throw WaitTimeout()
     }
 
     func testStartReachesRunningAfterReadinessDelay() async throws {

@@ -43,8 +43,13 @@ struct FolderSettingsView: View {
 }
 
 /// One settings window per folder id at a time.
+///
+/// The dictionary must be evicted when the user closes a window with the red
+/// button too: a retained window keeps the `@State` snapshot it was opened
+/// with, and reopening it would show stale settings whose Save overwrites
+/// newer config.
 @MainActor
-final class SettingsWindowController {
+final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var windows: [UUID: NSWindow] = [:]
 
     func show(folder: FolderConfig, onSave: @escaping (FolderConfig) -> Void) {
@@ -65,12 +70,21 @@ final class SettingsWindowController {
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false
         windows[folder.id] = window
+        window.delegate = self
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func close(id: UUID) {
+    /// Also called by the menu when a folder is removed.
+    func close(id: UUID) {
         windows.removeValue(forKey: id)?.close()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+        // By identity, not by id lookup: this delegate serves every window it
+        // opened, and the notification is the only handle we get.
+        windows = windows.filter { $0.value !== window }
     }
 }

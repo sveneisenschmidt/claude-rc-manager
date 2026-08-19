@@ -138,8 +138,12 @@ final class ScriptLauncher: ProcessLaunching {
                 if self.process.isRunning { self.process.terminate() }
                 // Grace period runs from the moment TERM was actually sent,
                 // not from the stop() call: resolving the pid can take a while.
-                self.queue.asyncAfter(deadline: .now() + gracePeriod) { [weak self] in
-                    guard let self else { return }
+                // Strong on purpose: the escalation must outlive the owner —
+                // when the ServerProcess holding this server is released
+                // mid-grace-period (folder removed), a weak capture would drop
+                // the SIGKILL and orphan a TERM-trapping inner claude. Bounded
+                // by gracePeriod, so the extra retain is short-lived.
+                self.queue.asyncAfter(deadline: .now() + gracePeriod) {
                     // script exits as soon as its child detaches, so its
                     // liveness says nothing about the inner claude: escalate
                     // on the inner pid, which a TERM-trapping child keeps

@@ -21,6 +21,11 @@ enum LoginItem {
                 try SMAppService.mainApp.unregister()
             } else {
                 try SMAppService.mainApp.register()
+                // register() succeeds but stays inert until the user approves
+                // it; without this the checkbox would silently do nothing.
+                if SMAppService.mainApp.status == .requiresApproval {
+                    return "Approve Claude RC Manager in System Settings > General > Login Items."
+                }
             }
             return nil
         } catch {

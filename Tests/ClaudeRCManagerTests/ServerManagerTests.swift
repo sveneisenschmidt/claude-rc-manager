@@ -3,36 +3,32 @@ import XCTest
 
 @MainActor
 final class ServerManagerTests: XCTestCase {
-    func makeSUT() -> (ServerManager, FakeLauncher) {
+    // FakeServer, FakeLauncher and waitFor live in TestSupport.swift.
+
+    func validFolder(autostart: Bool = true) -> FolderConfig {
+        var f = FolderConfig(path: NSTemporaryDirectory())
+        f.autostart = autostart
+        return f
+    }
+
+    func missingFolder(autostart: Bool = true) -> FolderConfig {
+        var f = FolderConfig(path: NSTemporaryDirectory() + "/nope-\(UUID())")
+        f.autostart = autostart
+        return f
+    }
+
+    /// Default layout: folder 0 exists, folder 1 does not; both autostart.
+    func makeSUT(folders: [FolderConfig]? = nil,
+                 backoffScale: Double = 0.05) -> (ServerManager, FakeLauncher)
+    {
         let launcher = FakeLauncher()
         var config = AppConfig()
-        var a = FolderConfig(path: NSTemporaryDirectory())
-        a.autostart = true
-        var b = FolderConfig(path: NSTemporaryDirectory() + "/nope-\(UUID())")
-        b.autostart = true
-        config.folders = [a, b]
+        config.folders = folders ?? [validFolder(), missingFolder()]
         let mgr = ServerManager(
             config: config, launcher: launcher,
             logDirectory: URL(fileURLWithPath: NSTemporaryDirectory()),
-            readinessDelay: 0.05)
+            readinessDelay: 0.05, backoffScale: backoffScale)
         return (mgr, launcher)
-    }
-
-    /// Polls instead of sleeping a fixed span: state changes ride on timers and
-    /// main-actor hops, so a fixed sleep races in both directions.
-    struct WaitTimeout: Error {}
-
-    func waitFor(_ condition: @MainActor () -> Bool, timeout: TimeInterval = 3,
-                 _ message: String,
-                 file: StaticString = #filePath, line: UInt = #line) async throws
-    {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if condition() { return }
-            try? await Task.sleep(nanoseconds: 2_000_000)
-        }
-        XCTFail(message, file: file, line: line)
-        throw WaitTimeout()
     }
 
     func testAutostartStartsOnlyExistingFolders() {
@@ -40,6 +36,13 @@ final class ServerManagerTests: XCTestCase {
         mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
         XCTAssertEqual(launcher.launchCount, 1)
         XCTAssertEqual(mgr.processes[1].state, .failed("folder missing"))
+    }
+
+    func testAutostartSkipsFoldersWithoutTheFlag() {
+        let (mgr, launcher) = makeSUT(folders: [validFolder(autostart: false)])
+        mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
+        XCTAssertEqual(launcher.launchCount, 0)
+        XCTAssertEqual(mgr.processes[0].state, .stopped)
     }
 
     func testAutostartSkippedWhenLoggedOut() {
@@ -65,21 +68,47 @@ final class ServerManagerTests: XCTestCase {
         XCTAssertEqual(mgr.processes[0].state, .stopping)
     }
 
-    func testOwnPidsListsScriptAndInnerPids() {
-        let (mgr, _) = makeSUT()
+    func testOwnPidsListsScriptAndInnerPidsOfEveryServer() async throws {
+        let (mgr, launcher) = makeSUT(folders: [validFolder(), validFolder()])
         mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
-        XCTAssertEqual(mgr.ownPids(), [111, 4242]) // FakeServer.pids
+        XCTAssertEqual(launcher.launchCount, 2)
+        let expected = Set(launcher.servers.flatMap(\.pids))
+        XCTAssertEqual(expected.count, 4, "each server must have its own pid pair")
+        XCTAssertEqual(mgr.ownPids(), expected)
     }
 
-    func testStartAllStartsStoppedFoldersOnly() async throws {
-        let (mgr, launcher) = makeSUT()
+    func testOwnPidsIsEmptyWhenNothingRuns() {
+        let (mgr, _) = makeSUT()
+        XCTAssertTrue(mgr.ownPids().isEmpty)
+    }
+
+    func testStartAllStartsStoppedValidFolder() async throws {
+        let (mgr, launcher) = makeSUT(folders: [validFolder(), validFolder(autostart: false)])
         mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
         try await waitFor({ mgr.processes[0].state == .running }, "must reach running")
-        // Folder 0 is running (not startable), folder 1 failed (startable but
-        // its path is still missing), so no new launch may happen.
-        mgr.startAll(claudePath: "/bin/echo", loggedIn: true)
         XCTAssertEqual(launcher.launchCount, 1)
+        // Folder 0 is running (not startable); folder 1 is stopped and valid.
+        mgr.startAll(claudePath: "/bin/echo", loggedIn: true)
+        XCTAssertEqual(launcher.launchCount, 2)
         XCTAssertEqual(mgr.processes[0].state, .running)
+        XCTAssertEqual(mgr.processes[1].state, .starting)
+    }
+
+    func testStartAllClearsCrashLoopPauseAndRelaunches() async throws {
+        let (mgr, launcher) = makeSUT(folders: [validFolder()])
+        mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
+        try await waitFor({ mgr.processes[0].state == .running }, "must reach running")
+        launcher.servers[0].exitNow(1) // fast exit 1 -> backoff restart
+        try await waitFor({ launcher.launchCount == 2 }, "first backoff restart must launch")
+        launcher.servers[1].exitNow(1) // fast exit 2 -> backoff restart
+        try await waitFor({ launcher.launchCount == 3 }, "second backoff restart must launch")
+        launcher.servers[2].exitNow(1) // fast exit 3 -> pause
+        try await waitFor({ mgr.processes[0].state == .failed("crash loop — check log") },
+                          "third fast exit must pause auto-restart")
+        // A bulk start is a manual start: it resets the policy and relaunches.
+        mgr.startAll(claudePath: "/bin/echo", loggedIn: true)
+        XCTAssertEqual(launcher.launchCount, 4)
+        XCTAssertEqual(mgr.processes[0].state, .starting)
     }
 
     func testStartByIdStartsThatFolder() {
@@ -91,7 +120,13 @@ final class ServerManagerTests: XCTestCase {
         XCTAssertEqual(mgr.processes[1].state, .stopped)
     }
 
-    func testSetFoldersKeepsProcessesAndStopsRemovedOnes() async throws {
+    func testStartByUnknownIdIsANoOp() {
+        let (mgr, launcher) = makeSUT()
+        mgr.start(id: UUID(), claudePath: "/bin/echo", loggedIn: true)
+        XCTAssertEqual(launcher.launchCount, 0)
+    }
+
+    func testSetFoldersReusesProcessAndUpdatesClaudePath() async throws {
         let (mgr, launcher) = makeSUT()
         mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
         try await waitFor({ mgr.processes[0].state == .running }, "must reach running")
@@ -103,6 +138,7 @@ final class ServerManagerTests: XCTestCase {
         XCTAssertEqual(mgr.processes.count, 1)
         XCTAssertTrue(mgr.processes[0] === kept, "same id must reuse its process")
         XCTAssertEqual(mgr.processes[0].folder.name, "renamed")
+        XCTAssertEqual(mgr.processes[0].claudePath, "/bin/true", "claudePath must propagate")
         XCTAssertEqual(launcher.launchCount, 1, "reuse must not relaunch")
     }
 
@@ -113,6 +149,16 @@ final class ServerManagerTests: XCTestCase {
         mgr.setFolders([], claudePath: nil)
         XCTAssertTrue(mgr.processes.isEmpty)
         XCTAssertTrue(launcher.servers[0].stopped, "removed folder's server must stop")
+    }
+
+    func testSetFoldersSurvivesDuplicateIDs() {
+        let (mgr, _) = makeSUT(folders: [validFolder()])
+        let existing = mgr.processes[0].folder
+        // A hand-edited config can repeat an id; this must not trap.
+        mgr.setFolders([existing, existing], claudePath: nil)
+        XCTAssertEqual(mgr.processes.count, 2)
+        XCTAssertFalse(mgr.processes[0] === mgr.processes[1],
+                       "the second copy gets its own process, not the reused one")
     }
 
     func testStatesAndAnyActive() async throws {

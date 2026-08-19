@@ -11,21 +11,29 @@ final class ServerManager {
     private let launcher: ProcessLaunching
     private let logDirectory: URL
     private let readinessDelay: TimeInterval
+    /// Shrinks the restart backoff in tests; 1 in production.
+    private let backoffScale: Double
     /// Re-checked before every start, auto-restarts included; wired to
     /// ClaudeCLI in main.swift. Returns a failure reason or nil.
     var preflight: (() -> String?)?
 
     init(config: AppConfig, launcher: ProcessLaunching, logDirectory: URL,
-         readinessDelay: TimeInterval = 5)
+         readinessDelay: TimeInterval = 5, backoffScale: Double = 1)
     {
         self.launcher = launcher
         self.logDirectory = logDirectory
         self.readinessDelay = readinessDelay
+        self.backoffScale = backoffScale
         setFolders(config.folders, claudePath: nil)
     }
 
     func setFolders(_ folders: [FolderConfig], claudePath: String?) {
-        var existing = Dictionary(uniqueKeysWithValues: processes.map { ($0.folder.id, $0) })
+        // uniquingKeysWith, not uniqueKeysWithValues: a hand-edited config.json
+        // can repeat a folder id, and a trap here would take the app down.
+        // ConfigStore re-keys duplicates on load; this is the belt to that
+        // suspenders. First wins, matching the load-time keep-the-first rule.
+        var existing = Dictionary(
+            processes.map { ($0.folder.id, $0) }, uniquingKeysWith: { first, _ in first })
         processes = folders.map { folder in
             if let p = existing.removeValue(forKey: folder.id) {
                 p.update(folder: folder)
@@ -34,7 +42,8 @@ final class ServerManager {
             }
             let p = ServerProcess(
                 folder: folder, launcher: launcher, logDirectory: logDirectory,
-                claudePath: claudePath ?? "claude", readinessDelay: readinessDelay)
+                claudePath: claudePath ?? "claude", readinessDelay: readinessDelay,
+                backoffScale: backoffScale)
             p.onStateChange = { [weak self] _ in self?.onAnyStateChange?() }
             // Indirect on purpose: the manager's preflight is wired after the
             // processes exist, and may be replaced later.
@@ -62,8 +71,11 @@ final class ServerManager {
     }
 
     func autostart(claudePath: String?, loggedIn: Bool) {
+        // manual: false — app launch is not a user "start this now", so it must
+        // not reset the restart policy and clear a crash-loop pause. (At launch
+        // every policy is fresh anyway; this matters after a config reload.)
         for p in processes where p.folder.autostart {
-            start(p, claudePath: claudePath, loggedIn: loggedIn, manual: true)
+            start(p, claudePath: claudePath, loggedIn: loggedIn, manual: false)
         }
     }
 
