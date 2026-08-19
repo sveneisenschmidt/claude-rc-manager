@@ -62,20 +62,25 @@ Receives the same pty chunks as the `LogWriter`, extracts the count from
 - Escape sequences are removed with `LogWriter.filter`
   (`LogWriter.swift:32`) before matching.
 - The last match in a chunk wins: one read can carry several redraws.
-- The trailing 256 bytes of each chunk are carried over to the next one, so
-  a match split across two reads is still found. Older bytes are dropped.
+- The trailing 256 characters of each chunk are carried over to the next
+  one, so a match split across two reads is still found, as is an escape
+  sequence cut in half by the read boundary. Older characters are dropped.
 
 ### ServerProcess
 
 - `sessionCount: Int?`: `nil` means unknown. Set from the counter, hopping
-  to the main actor like the exit callback (`ServerProcess.swift:119`).
-  Reset to `nil` at the start of every run and when the process exits.
+  to the main actor like the exit callback (`ServerProcess.swift:119`), and
+  cleared when a run ends. That is the only place it needs clearing, because
+  a new run can only start once the previous one is over.
 - One counter per run. A report is applied only if it comes from the run's
   current counter (identity check), so a report already in flight when a run
   ends cannot land after the reset.
 - `activeSessions: Int`, the single value every caller uses:
   - no live run, meaning the state is not active or the previous run
     already ended and a restart is still pending → `0`
+  - state `.stopping` → `0`. That stop was already confirmed and the
+    sessions are being torn down; a quit during the 5 s grace period must
+    not ask about them again.
   - spawn mode `session` and state active → `1`. In that mode the CLI exits
     when the session ends (`ServerProcess.swift:181`; design doc
     `2026-08-19-claude-rc-manager-design.md:234-235`) and prints no capacity
@@ -192,6 +197,9 @@ the singular for one.
 - A session can start or end between the alert and the stop. The number
   shown is the last one reported, not a value queried at click time; there
   is no channel back to the server to ask.
+- Each report reaches the main actor as its own task, so two reports from
+  one run are ordered by the executor rather than by a guarantee. A reorder
+  leaves the count one redraw behind, which the next redraw corrects.
 - The number can be old. The CLI prints nothing while reconnecting or
   failed, and once a server is at capacity it re-polls only every 10
   minutes, so the last reported number can stand for that long.
@@ -206,8 +214,8 @@ the singular for one.
 - Counter: count in one chunk, count split across two chunks, several counts
   in one chunk, no count, escape sequences around the count, a fragment
   pushed out of the carry-over and therefore dropped.
-- `sessionCount`: reset at run start, reset on exit, a report from a
-  superseded counter ignored.
+- `sessionCount`: cleared on exit, a report from a superseded counter
+  ignored.
 - `activeSessions`: stopped, active with unknown count, spawn mode
   `session`, reported count, spawn mode read from the run snapshot after a
   settings edit.
