@@ -1,0 +1,30 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: swift test
+      - name: Build app
+        run: make app
+      - name: Zip
+        run: |
+          cd .build/release
+          ditto -c -k --keepParent "Claude RC Manager.app" "ClaudeRCManager-${GITHUB_REF_NAME}.zip"
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            ".build/release/ClaudeRCManager-${GITHUB_REF_NAME}.zip" \
+            --title "Claude RC Manager $GITHUB_REF_NAME" \
+            --generate-notes
