@@ -28,7 +28,7 @@ final class L10nTests: XCTestCase {
         XCTAssertEqual(try english("status.failed"), "✕ failed (%@)")
         XCTAssertEqual(try english("reason.exited"), "exited, status %d")
         XCTAssertEqual(try english("external.row"), "%@ — running (external)")
-        XCTAssertEqual(try english("external.pidFallback"), "pid %d")
+        XCTAssertEqual(try english("external.pidFallback"), "pid %@")
         XCTAssertEqual(try english("settings.title"), "%@ — Settings")
         XCTAssertEqual(try english("a11y.warning"), "Claude RC Manager — warning")
     }
@@ -69,7 +69,8 @@ final class L10nTests: XCTestCase {
         // four-digit value would carry a locale grouping separator; assert
         // with values that render identically in every locale.
         XCTAssertTrue(L10n.t("settings.title", "demo").contains("demo"))
-        XCTAssertTrue(L10n.t("external.pidFallback", Int32(471)).contains("471"))
+        // %@ with a pre-rendered String: pids never get locale digit grouping.
+        XCTAssertTrue(L10n.t("external.pidFallback", String(4711)).contains("4711"))
         XCTAssertTrue(L10n.t("settings.capacity", Int32(12)).contains("12"))
     }
 

@@ -124,7 +124,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             menu.addItem(disabled(L10n.t("external.header")))
             for server in externalServers {
                 let name = (server.workingDirectory as NSString?)?.lastPathComponent
-                    ?? L10n.t("external.pidFallback", server.pid)
+                    ?? L10n.t("external.pidFallback", String(server.pid))
                 let item = disabled(L10n.t("external.row", name))
                 item.toolTip = server.workingDirectory ?? server.command
                 menu.addItem(item)

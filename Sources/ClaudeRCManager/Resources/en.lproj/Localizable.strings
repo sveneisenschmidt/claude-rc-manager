@@ -26,7 +26,7 @@
 /* MARK: external servers */
 "external.header" = "External servers";
 "external.row" = "%@ — running (external)";
-"external.pidFallback" = "pid %d";
+"external.pidFallback" = "pid %@";
 
 /* MARK: status labels */
 "status.stopped" = "○ stopped";
