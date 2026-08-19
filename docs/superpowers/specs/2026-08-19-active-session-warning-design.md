@@ -74,7 +74,8 @@ Receives the same pty chunks as the `LogWriter`, extracts the count from
   current counter (identity check), so a report already in flight when a run
   ends cannot land after the reset.
 - `activeSessions: Int`, the single value every caller uses:
-  - state not active → `0`
+  - no live run, meaning the state is not active or the previous run
+    already ended and a restart is still pending → `0`
   - spawn mode `session` and state active → `1`. In that mode the CLI exits
     when the session ends (`ServerProcess.swift:181`; design doc
     `2026-08-19-claude-rc-manager-design.md:234-235`) and prints no capacity
@@ -94,10 +95,12 @@ Receives the same pty chunks as the `LogWriter`, extracts the count from
 ### ServerManager
 
 ```swift
-/// Folder name and session count, for folders that have at least one.
-/// Order follows `processes`, which is config order (`setFolders`).
-func sessionEntries(of processes: [ServerProcess]) -> [(name: String, count: Int)]
-var totalActiveSessions: Int   // sum over all processes
+struct SessionEntry: Equatable { let name: String; let count: Int }
+
+/// Folders with at least one session, in config order. Static, so a single
+/// folder's Stop can pass just its own process.
+static func sessionEntries(of processes: [ServerProcess]) -> [SessionEntry]
+var activeSessionEntries: [SessionEntry]   // all processes
 ```
 
 `sessionEntries` filters on `activeSessions >= 1`; a server that is active
@@ -108,8 +111,10 @@ with an unknown count is not included, per decision 3.
 Split in two so the wording can be tested:
 
 - `SessionAlertText`, pure functions: `title(scope:count:)` for scope
-  `.quit` / `.stop`, `body(entries:)` (empty list yields the variant without
-  the enumeration), `menuSuffix(count:)`. Covered by unit tests.
+  `.quit` / `.stop`, `body(entries:)` (an empty list yields the variant
+  without the enumeration), `menuSuffix(count:)`, `removeSentence(count:)`,
+  plus `total(of:)` and `needsWarning(entries:)`. The threshold lives here
+  rather than in the modal, so a test covers it.
 - a thin `NSAlert` wrapper that runs the modal. Not covered.
 
 Shape, English key set:
@@ -121,14 +126,18 @@ be cut off.
 [Cancel] [Quit Anyway]
 ```
 
-Cancel is added first and is therefore the default button: pressing Return
-must not destroy anything. The single-folder "Stop" omits the enumeration,
-because the folder is already named by the menu it was invoked from.
+Cancel is added first and takes the Escape key equivalent. AppKit wires
+Escape only to a button literally titled "Cancel", which six of the seven
+translations are not; assigning it also takes Return away from that button,
+so no key press confirms and Escape cancels in every language. The
+single-folder "Stop" omits the enumeration, because the folder is already
+named by the menu it was invoked from.
 
-**Deliberately unchanged:** the existing Remove confirmation adds its
+The existing Remove confirmation is brought in line. It currently adds its
 destructive button first (`StatusMenuController.swift:277`), so Return
-confirms there. Reordering it changes behaviour that is not part of this
-issue and is left alone.
+confirms a removal there. Leaving that alone would put the riskier default
+on the more destructive of the two dialogs in the same menu, so Remove gets
+the same button order and the same Escape binding.
 
 ## Call sites
 
@@ -195,8 +204,8 @@ the singular for one.
 ## Tests (`swift test`)
 
 - Counter: count in one chunk, count split across two chunks, several counts
-  in one chunk, no count, escape sequences around the count, a chunk longer
-  than the carry-over ceiling.
+  in one chunk, no count, escape sequences around the count, a fragment
+  pushed out of the carry-over and therefore dropped.
 - `sessionCount`: reset at run start, reset on exit, a report from a
   superseded counter ignored.
 - `activeSessions`: stopped, active with unknown count, spawn mode
@@ -204,4 +213,5 @@ the singular for one.
   settings edit.
 - `sessionEntries`: folders without sessions filtered out, config order kept.
 - Text builder: one session against several, quit title against stop title,
-  body with and without the enumeration, menu suffix at zero and above.
+  body with and without the enumeration, menu suffix at zero and above, the
+  total and the warning threshold at zero and above.
