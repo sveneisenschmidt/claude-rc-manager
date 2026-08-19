@@ -44,17 +44,30 @@ final class ConfigStore {
 
     /// Attempts to preserve the unreadable/corrupt file by moving it aside.
     /// Only reports `.recoveredFromCorrupt` when that move actually
-    /// succeeds; if it fails, the original file is left in place and
-    /// `.unreadable` is returned so callers know not to overwrite it.
+    /// succeeds; if it fails, the original file is left in place,
+    /// `.unreadable` is returned, and save() refuses to run so the
+    /// preserved file cannot be overwritten. An existing backup is only
+    /// removed when the move fails on the name collision, so a failed move
+    /// never destroys a good backup for nothing.
     private func recoverFromCorrupt() -> LoadResult {
+        let fm = FileManager.default
         do {
-            try? FileManager.default.removeItem(at: backupURL)
-            try FileManager.default.moveItem(at: fileURL, to: backupURL)
+            do {
+                try fm.moveItem(at: fileURL, to: backupURL)
+            } catch CocoaError.fileWriteFileExists {
+                try fm.removeItem(at: backupURL)
+                try fm.moveItem(at: fileURL, to: backupURL)
+            }
             return .recoveredFromCorrupt(AppConfig())
         } catch {
+            saveSuppressed = true
             return .unreadable(AppConfig())
         }
     }
+
+    /// True after load() returned .unreadable: the on-disk file could not
+    /// be read or preserved, so overwriting it would destroy data.
+    private(set) var saveSuppressed = false
 
     private static func isFileNotFound(_ error: Error) -> Bool {
         if let cocoaError = error as? CocoaError, cocoaError.code == .fileReadNoSuchFile {
@@ -70,7 +83,10 @@ final class ConfigStore {
         return false
     }
 
+    struct SaveSuppressedError: Error {}
+
     func save(_ config: AppConfig) throws {
+        guard !saveSuppressed else { throw SaveSuppressedError() }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(config)

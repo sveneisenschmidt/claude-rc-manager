@@ -37,6 +37,23 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
     }
 
+    func testUnreadableFileIsPreservedAsBackup() throws {
+        // Root can read mode-000 files; the branch is unreachable then.
+        try XCTSkipIf(getuid() == 0)
+        let file = dir.appendingPathComponent("config.json")
+        let original = #"{"version":1,"folders":[{"path":"/keepme"}]}"#
+        try Data(original.utf8).write(to: file)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0], ofItemAtPath: file.path)
+        let store = ConfigStore(directory: dir)
+        XCTAssertEqual(store.load(), .recoveredFromCorrupt(AppConfig()))
+        let bak = dir.appendingPathComponent("config.json.bak")
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o644], ofItemAtPath: bak.path)
+        XCTAssertEqual(try String(contentsOf: bak, encoding: .utf8), original)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
+
     func testSaveOverExistingFileRoundTrips() throws {
         let store = ConfigStore(directory: dir)
         var first = AppConfig()
