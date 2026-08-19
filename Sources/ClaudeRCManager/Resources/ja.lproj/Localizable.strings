@@ -7,13 +7,13 @@
 
 /* MARK: menu */
 "menu.addFolder" = "フォルダを追加…";
-"menu.startAll" = "すべてを開始";
+"menu.startAll" = "すべてを起動";
 "menu.stopAll" = "すべてを停止";
 "menu.startAtLogin" = "ログイン時に起動";
 "menu.startAtLogin.tooltip" = "先に/Applicationsにインストールしてください";
 "menu.quit" = "Claude RC Managerを終了";
-"menu.openLogin" = "ターミナルでログインを開く…";
-"menu.start" = "開始";
+"menu.openLogin" = "ターミナルでログイン…";
+"menu.start" = "起動";
 "menu.stop" = "停止";
 "menu.openLog" = "ログを開く";
 "menu.settings" = "設定…";
@@ -32,11 +32,11 @@
 
 /* MARK: status labels */
 "status.stopped" = "○ 停止済み";
-"status.starting" = "◐ 開始中";
+"status.starting" = "◐ 起動中";
 "status.running" = "● 実行中";
 "status.stopping" = "◐ 停止中";
 "status.restarting" = "◐ 再起動中…";
-"status.ended" = "○ 終了";
+"status.ended" = "○ 終了済み";
 "status.failed" = "✕ 失敗（%@）";
 
 /* MARK: failure reasons */
@@ -53,11 +53,11 @@
 "settings.path" = "パス";
 "settings.spawnMode" = "起動モード";
 "settings.createSessionInDir" = "ディレクトリ内にセッションを事前作成";
-"settings.capacity" = "最大セッション数：%@";
+"settings.capacity" = "容量：%@";
 "settings.permissionMode" = "権限モード";
 "settings.permissionMode.cliDefault" = "CLIのデフォルト";
 "settings.extraArgs" = "追加の引数";
-"settings.autostart" = "自動的に開始";
+"settings.autostart" = "自動的に起動";
 "settings.autoRestart" = "クラッシュ時に再起動";
 "settings.applyHint" = "変更はサーバの次回起動時に適用されます。";
 "settings.save" = "保存";
@@ -73,11 +73,11 @@
 "alert.duplicateFolder.title" = "フォルダはすでに追加されています";
 "alert.saveFailed.title" = "設定を保存できませんでした";
 "alert.saveFailed.unreadable" = "既存のconfig.jsonを読み込むことも退避することもできなかったため、上書きしていません。変更は終了するまで有効です。";
-"alert.saveFailed.body" = "%@ 変更は終了するまで有効です。";
+"alert.saveFailed.body" = "%@変更は終了するまで有効です。";
 "alert.loginItem.title" = "ログイン項目を変更できませんでした";
 "alert.loginItem.requiresApproval" = "システム設定 > 一般 > ログイン項目でClaude RC Managerを許可してください。";
 
 /* MARK: accessibility (the app name is a product name and stays fixed) */
 "a11y.warning" = "Claude RC Manager — 警告";
 "a11y.active" = "Claude RC Manager — アクティブ";
-"a11y.idle" = "Claude RC Manager — アイドル";
+"a11y.idle" = "Claude RC Manager — 待機中";

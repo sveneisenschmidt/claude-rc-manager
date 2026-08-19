@@ -19,7 +19,7 @@
 "menu.remove" = "Eliminar…";
 
 /* MARK: warning rows */
-"warning.cliNotFound" = "⚠️ No se ha encontrado la CLI de claude — instala Claude Code";
+"warning.cliNotFound" = "⚠️ CLI claude no encontrada — instala Claude Code";
 "warning.notLoggedIn" = "⚠️ No se ha iniciado sesión en Claude";
 "warning.configCorrupt" = "⚠️ config.json estaba dañado — se ha movido a config.json.bak";
 "warning.configUnreadable" = "⚠️ No se ha podido leer ni conservar config.json — los cambios no se guardan";
@@ -39,19 +39,19 @@
 "status.failed" = "✕ fallido (%@)";
 
 /* MARK: failure reasons */
-"reason.claudeNotFound" = "no se ha encontrado claude";
+"reason.claudeNotFound" = "claude no encontrado";
 "reason.notLoggedIn" = "sesión no iniciada";
 "reason.folderMissing" = "falta la carpeta";
 "reason.crashLoop" = "bucle de fallos — consulta el registro";
 "reason.launchError" = "error de inicio";
-"reason.exited" = "ha finalizado, estado %d";
+"reason.exited" = "salida, estado %d";
 
 /* MARK: settings window */
 "settings.title" = "%@ — Ajustes";
 "settings.name" = "Nombre";
 "settings.path" = "Ruta";
 "settings.spawnMode" = "Modo de inicio";
-"settings.createSessionInDir" = "Crear la sesión en la carpeta de antemano";
+"settings.createSessionInDir" = "Crear previamente la sesión en la carpeta";
 "settings.capacity" = "Capacidad: %@";
 "settings.permissionMode" = "Modo de permisos";
 "settings.permissionMode.cliDefault" = "Valor por omisión de la CLI";

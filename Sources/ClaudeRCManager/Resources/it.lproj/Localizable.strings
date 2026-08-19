@@ -1,6 +1,6 @@
 /* Italian catalog. Keys mirror en.lproj exactly. Status glyphs (○ ● ◐ ✕)
    are unchanged; only the word is translated. Technical terms the user
-   needs verbatim (claude, Claude Code, claude auth login, Terminal,
+   needs verbatim (claude, Claude Code, claude auth login, Terminale,
    /Applications, config.json, .bak, worktree) and the product name
    "Claude RC Manager" stay untranslated. */
 
@@ -11,7 +11,7 @@
 "menu.startAtLogin" = "Apri al login";
 "menu.startAtLogin.tooltip" = "Installa prima l'app in /Applications";
 "menu.quit" = "Esci da Claude RC Manager";
-"menu.openLogin" = "Accedi nel Terminale…";
+"menu.openLogin" = "Accedi in Terminale…";
 "menu.start" = "Avvia";
 "menu.stop" = "Arresta";
 "menu.openLog" = "Apri il log";
@@ -44,7 +44,7 @@
 "reason.folderMissing" = "cartella mancante";
 "reason.crashLoop" = "ciclo di arresti anomali — controlla il log";
 "reason.launchError" = "errore di avvio";
-"reason.exited" = "terminato, stato %d";
+"reason.exited" = "uscita, stato %d";
 
 /* MARK: settings window */
 "settings.title" = "%@ — Impostazioni";
@@ -54,7 +54,7 @@
 "settings.createSessionInDir" = "Crea in anticipo la sessione nella cartella";
 "settings.capacity" = "Capacità: %@";
 "settings.permissionMode" = "Modalità di autorizzazione";
-"settings.permissionMode.cliDefault" = "Valore predefinito della CLI";
+"settings.permissionMode.cliDefault" = "Predefinito (CLI)";
 "settings.extraArgs" = "Argomenti aggiuntivi";
 "settings.autostart" = "Avvia automaticamente";
 "settings.autoRestart" = "Riavvia dopo un arresto anomalo";

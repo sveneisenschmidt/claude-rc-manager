@@ -16,7 +16,7 @@
 "menu.stop" = "Arrêter";
 "menu.openLog" = "Ouvrir le journal";
 "menu.settings" = "Réglages…";
-"menu.remove" = "Supprimer…";
+"menu.remove" = "Retirer…";
 
 /* MARK: warning rows */
 "warning.cliNotFound" = "⚠️ CLI claude introuvable — installer Claude Code";
@@ -44,17 +44,17 @@
 "reason.folderMissing" = "dossier introuvable";
 "reason.crashLoop" = "boucle de plantages — consulter le journal";
 "reason.launchError" = "erreur de lancement";
-"reason.exited" = "quitté, code %d";
+"reason.exited" = "quitté, état %d";
 
 /* MARK: settings window */
 "settings.title" = "%@ — Réglages";
 "settings.name" = "Nom";
 "settings.path" = "Chemin";
 "settings.spawnMode" = "Mode de lancement";
-"settings.createSessionInDir" = "Créer la session dans le dossier au préalable";
+"settings.createSessionInDir" = "Précréer la session dans le dossier";
 "settings.capacity" = "Capacité : %@";
 "settings.permissionMode" = "Mode d'autorisation";
-"settings.permissionMode.cliDefault" = "Valeur par défaut de la CLI";
+"settings.permissionMode.cliDefault" = "Par défaut (CLI)";
 "settings.extraArgs" = "Arguments supplémentaires";
 "settings.autostart" = "Démarrer automatiquement";
 "settings.autoRestart" = "Redémarrer après un plantage";
@@ -65,9 +65,9 @@
 /* MARK: alerts */
 "alert.terminal.title" = "Impossible d'ouvrir Terminal";
 "alert.terminal.body" = "L'autorisation d'automatisation est peut-être refusée. Elle s'accorde dans Réglages Système > Confidentialité et sécurité > Automatisation ; sinon, exécuter `claude auth login` soi-même dans un terminal.";
-"alert.remove.title" = "Supprimer « %@ » ?";
+"alert.remove.title" = "Retirer « %@ » ?";
 "alert.remove.body" = "Le serveur est arrêté et le dossier retiré de la liste. Le fichier journal est conservé.";
-"alert.remove.confirm" = "Supprimer";
+"alert.remove.confirm" = "Retirer";
 "alert.remove.cancel" = "Annuler";
 "alert.duplicateFolder.title" = "Dossier déjà ajouté";
 "alert.saveFailed.title" = "Impossible d'enregistrer les réglages";

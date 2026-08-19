@@ -8,10 +8,10 @@
 "menu.addFolder" = "Ordner hinzufügen…";
 "menu.startAll" = "Alle starten";
 "menu.stopAll" = "Alle stoppen";
-"menu.startAtLogin" = "Bei der Anmeldung starten";
+"menu.startAtLogin" = "Bei der Anmeldung öffnen";
 "menu.startAtLogin.tooltip" = "Zuerst in /Applications installieren";
 "menu.quit" = "Claude RC Manager beenden";
-"menu.openLogin" = "Anmeldung im Terminal öffnen…";
+"menu.openLogin" = "Im Terminal anmelden…";
 "menu.start" = "Starten";
 "menu.stop" = "Stoppen";
 "menu.openLog" = "Protokoll öffnen";
@@ -20,7 +20,7 @@
 
 /* MARK: warning rows */
 "warning.cliNotFound" = "⚠️ claude CLI nicht gefunden — Claude Code installieren";
-"warning.notLoggedIn" = "⚠️ Claude nicht angemeldet";
+"warning.notLoggedIn" = "⚠️ Bei Claude nicht angemeldet";
 "warning.configCorrupt" = "⚠️ config.json war beschädigt — nach config.json.bak verschoben";
 "warning.configUnreadable" = "⚠️ config.json konnte nicht gelesen oder gesichert werden — Änderungen werden nicht gespeichert";
 
@@ -44,7 +44,7 @@
 "reason.folderMissing" = "Ordner fehlt";
 "reason.crashLoop" = "Absturzschleife — Protokoll prüfen";
 "reason.launchError" = "Startfehler";
-"reason.exited" = "beendet, Status %d";
+"reason.exited" = "Exit-Status %d";
 
 /* MARK: settings window */
 "settings.title" = "%@ — Einstellungen";
@@ -64,7 +64,7 @@
 
 /* MARK: alerts */
 "alert.terminal.title" = "Terminal konnte nicht geöffnet werden";
-"alert.terminal.body" = "Möglicherweise wurde die Berechtigung für Automation verweigert. Sie lässt sich unter Systemeinstellungen > Datenschutz & Sicherheit > Automation erteilen; alternativ `claude auth login` selbst in einem Terminal ausführen.";
+"alert.terminal.body" = "Möglicherweise wurde die Berechtigung für Automation verweigert. Die Berechtigung lässt sich unter Systemeinstellungen > Datenschutz & Sicherheit > Automation erteilen; alternativ `claude auth login` selbst in einem Terminal ausführen.";
 "alert.remove.title" = "„%@“ entfernen?";
 "alert.remove.body" = "Der Server wird gestoppt und der Ordner aus der Liste entfernt. Die Protokolldatei bleibt erhalten.";
 "alert.remove.confirm" = "Entfernen";
