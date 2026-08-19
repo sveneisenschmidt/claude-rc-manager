@@ -149,6 +149,25 @@ Start at Login: `SMAppService.mainApp.register()/unregister()`. A thrown
 error shows an alert. When the app bundle is not in `/Applications`, the
 checkbox is disabled with a hint ("Install to /Applications first").
 
+### External servers (detection + display only)
+
+On menu open, the app scans for `claude remote-control` processes it did not
+start itself (verified 2026-08-19 on this machine):
+
+- `pgrep -fl` matching the full command line for `remote-control`, same
+  user, minus the pids of app-managed servers (script pids and their inner
+  children).
+- Working directory per pid via `lsof -a -p <pid> -d cwd -Fn` (output lines
+  `p<pid>` / `fcwd` / `n<path>`).
+
+Matches appear in a menu section "External servers" between the folder list
+and "Add Folder…": one disabled row per server showing the folder basename
+and status `running (external)`, with the full path as tooltip. Display
+only — no import, no stop, no log access (an external server's output
+belongs to the terminal that started it). External servers do not affect the
+status-icon aggregation. Importing/stopping external servers is a
+post-MVP follow-up.
+
 ## Process lifecycle
 
 ### Command and process tree
@@ -271,6 +290,7 @@ Single instance: a second app instance exits immediately
 - Backoff calculator (sequence, cap, reset) and crash-loop counter rules
 - `auth status` JSON parser (valid, invalid, missing field)
 - ANSI/CR log-stream filter
+- External-server scan parsers (pgrep and lsof output, own-pid exclusion)
 
 The process launcher sits behind a protocol so ServerManager logic is
 testable with a fake. UI is tested manually.
@@ -308,6 +328,7 @@ testable with a fake. UI is tested manually.
 - Active workspace-trust detection (failure is visible in the log)
 - Log rotation beyond the single `.old` file
 - Detecting a folder that vanishes while its server runs
+- Importing or stopping external servers (MVP only detects and displays them)
 - Cleanup of orphaned servers after a force-quit of the app
 - Spawning the CLI on a directly-owned pty (posix_spawn + openpty) instead
   of `script` — would give exact child status and cleaner signaling; the
