@@ -1,5 +1,11 @@
 import Foundation
 
+/// One folder's share of the sessions an action would end.
+struct SessionEntry: Equatable {
+    let name: String
+    let count: Int
+}
+
 /// Owns all ServerProcess instances (spec: ServerManager). Autostart on
 /// launch, bulk start/stop, quit coordination, pid bookkeeping for the
 /// external-server scan.
@@ -94,6 +100,18 @@ final class ServerManager {
     func ownPids() -> Set<pid_t> {
         Set(processes.flatMap { $0.pids })
     }
+
+    /// Folders with at least one session, in the order they are configured.
+    /// Servers whose count is still unknown are not listed (spec: unknown
+    /// counts as none).
+    static func sessionEntries(of processes: [ServerProcess]) -> [SessionEntry] {
+        processes.compactMap { p in
+            let count = p.activeSessions
+            return count >= 1 ? SessionEntry(name: p.folder.name, count: count) : nil
+        }
+    }
+
+    var activeSessionEntries: [SessionEntry] { Self.sessionEntries(of: processes) }
 
     var states: [ServerState] { processes.map(\.state) }
     var anyActive: Bool { states.contains(where: \.isActive) }

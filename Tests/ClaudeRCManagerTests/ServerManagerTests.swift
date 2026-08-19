@@ -193,4 +193,47 @@ final class ServerManagerTests: XCTestCase {
         XCTAssertEqual(launcher.launchCount, 0)
         XCTAssertEqual(mgr.processes[0].state, .failed("not logged in"))
     }
+
+    // MARK: session entries
+
+    /// Two existing folders with distinct names, both autostarting.
+    private func twoNamedFolders() -> [FolderConfig] {
+        var a = validFolder()
+        a.name = "alpha"
+        var b = validFolder()
+        b.name = "beta"
+        return [a, b]
+    }
+
+    func testSessionEntriesSkipFoldersWithoutSessions() async throws {
+        let (mgr, launcher) = makeSUT(folders: twoNamedFolders())
+        mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
+        try await waitFor({ mgr.processes.allSatisfy { $0.state == .running } }, "both must run")
+        launcher.servers[0].onOutput?(Data("Capacity: 2/32".utf8))
+        try await waitFor({ mgr.processes[0].sessionCount == 2 }, "count must arrive")
+        XCTAssertEqual(mgr.activeSessionEntries, [SessionEntry(name: "alpha", count: 2)])
+    }
+
+    func testSessionEntriesKeepConfigOrder() async throws {
+        let (mgr, launcher) = makeSUT(folders: twoNamedFolders())
+        mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
+        try await waitFor({ mgr.processes.allSatisfy { $0.state == .running } }, "both must run")
+        launcher.servers[1].onOutput?(Data("Capacity: 1/32".utf8))
+        launcher.servers[0].onOutput?(Data("Capacity: 3/32".utf8))
+        try await waitFor({ mgr.activeSessionEntries.count == 2 }, "both counts must arrive")
+        XCTAssertEqual(mgr.activeSessionEntries,
+                       [SessionEntry(name: "alpha", count: 3),
+                        SessionEntry(name: "beta", count: 1)])
+    }
+
+    func testSessionEntriesOfASubset() async throws {
+        let (mgr, launcher) = makeSUT(folders: twoNamedFolders())
+        mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
+        try await waitFor({ mgr.processes.allSatisfy { $0.state == .running } }, "both must run")
+        launcher.servers[1].onOutput?(Data("Capacity: 1/32".utf8))
+        try await waitFor({ mgr.processes[1].sessionCount == 1 }, "count must arrive")
+        XCTAssertEqual(ServerManager.sessionEntries(of: [mgr.processes[1]]),
+                       [SessionEntry(name: "beta", count: 1)])
+        XCTAssertEqual(ServerManager.sessionEntries(of: [mgr.processes[0]]), [])
+    }
 }
