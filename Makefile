@@ -2,7 +2,7 @@ APP_NAME = Claude RC Manager
 BUILD_DIR = .build/release
 APP_DIR = $(BUILD_DIR)/$(APP_NAME).app
 
-.PHONY: build test app install clean
+.PHONY: build test app install uninstall clean
 
 build:
 	swift build -c release
@@ -22,6 +22,15 @@ install: app
 	rm -rf "/Applications/$(APP_NAME).app"
 	cp -R "$(APP_DIR)" "/Applications/$(APP_NAME).app"
 	@echo "Installed to /Applications/$(APP_NAME).app"
+
+uninstall:
+	@pgrep -x ClaudeRCManager >/dev/null && echo "Quit the app first (it stops its servers on quit)." && exit 1 || true
+	rm -rf "/Applications/$(APP_NAME).app"
+	@echo "Removed /Applications/$(APP_NAME).app"
+	@echo "Kept: ~/Library/Application Support/$(APP_NAME)/ (config)"
+	@echo "Kept: ~/Library/Logs/ClaudeRCManager/ (logs)"
+	@echo "Delete those two folders to remove all data. If Start at Login"
+	@echo "was enabled, macOS drops the login item with the app."
 
 clean:
 	rm -rf .build

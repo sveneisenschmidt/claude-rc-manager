@@ -32,6 +32,11 @@ Note: the ad-hoc code signature changes on every rebuild, so after a
 reinstall macOS may ask you to re-approve the login item in
 System Settings → General → Login Items.
 
+`make uninstall` removes the app from `/Applications` (quit it first). Config
+(`~/Library/Application Support/Claude RC Manager/`) and logs
+(`~/Library/Logs/ClaudeRCManager/`) stay; delete those folders to remove all
+data.
+
 ## Usage
 
 Click the terminal icon in the menu bar:
