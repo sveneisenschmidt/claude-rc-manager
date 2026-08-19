@@ -2,15 +2,12 @@ APP_NAME = Claude RC Manager
 BUILD_DIR = .build/release
 APP_DIR = $(BUILD_DIR)/$(APP_NAME).app
 
-.PHONY: build test app install uninstall clean
+.PHONY: build test install uninstall clean
 
+# Builds the binary, assembles the .app bundle with all localizations,
+# and signs it (ad-hoc).
 build:
 	swift build -c release
-
-test:
-	swift test
-
-app: build
 	rm -rf "$(APP_DIR)"
 	mkdir -p "$(APP_DIR)/Contents/MacOS"
 	cp Resources/Info.plist "$(APP_DIR)/Contents/Info.plist"
@@ -28,8 +25,11 @@ app: build
 	codesign --force --sign - "$(APP_DIR)"
 	@echo "Built: $(APP_DIR)"
 
-install: app
-	rm -rf "/Applications/$(APP_NAME).app"
+test:
+	swift test
+
+install: build
+	$(MAKE) uninstall
 	cp -R "$(APP_DIR)" "/Applications/$(APP_NAME).app"
 	@echo "Installed to /Applications/$(APP_NAME).app"
 
@@ -37,10 +37,6 @@ uninstall:
 	@pgrep -x ClaudeRCManager >/dev/null && echo "Quit the app first (it stops its servers on quit)." && exit 1 || true
 	rm -rf "/Applications/$(APP_NAME).app"
 	@echo "Removed /Applications/$(APP_NAME).app"
-	@echo "Kept: ~/Library/Application Support/$(APP_NAME)/ (config)"
-	@echo "Kept: ~/Library/Logs/ClaudeRCManager/ (logs)"
-	@echo "Delete those two folders to remove all data. If Start at Login"
-	@echo "was enabled, macOS drops the login item with the app."
 
 clean:
 	rm -rf .build

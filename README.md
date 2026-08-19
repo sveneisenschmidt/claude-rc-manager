@@ -58,7 +58,9 @@ Click the terminal icon in the menu bar:
 ## Development
 
 ```bash
-swift test   # unit tests
-swift run    # run from the checkout (menu bar icon, no Dock icon)
-make app     # build the .app bundle
+swift test      # unit tests
+swift run       # run from the checkout (menu bar icon, no Dock icon)
+make build      # build and sign the .app bundle
+make install    # uninstall old copy, then install to /Applications
+make uninstall  # remove from /Applications (config and logs stay)
 ```
