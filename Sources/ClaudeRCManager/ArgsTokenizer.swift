@@ -2,7 +2,9 @@ import Foundation
 
 /// POSIX-like tokenizer for the per-folder extra-args field (spec:
 /// Per-folder configuration). Whitespace splits; ' and " quote; \ escapes
-/// the next character outside single quotes. No tilde/glob/variable
+/// the next character outside single quotes. Inside double quotes, \ only
+/// escapes one of " \ ` $ (POSIX double-quote rule); before any other
+/// character the backslash stays literal. No tilde/glob/variable
 /// expansion — tokens go to argv directly, no shell involved.
 enum ArgsTokenizer {
     static func tokenize(_ input: String) -> [String] {
@@ -17,7 +19,16 @@ enum ArgsTokenizer {
                 if c == q {
                     quote = nil
                 } else if c == "\\" && q == "\"" {
-                    current.append(it.next() ?? "\\")
+                    if let next = it.next() {
+                        if next == "\"" || next == "\\" || next == "`" || next == "$" {
+                            current.append(next)
+                        } else {
+                            current.append("\\")
+                            current.append(next)
+                        }
+                    } else {
+                        current.append("\\")
+                    }
                 } else {
                     current.append(c)
                 }

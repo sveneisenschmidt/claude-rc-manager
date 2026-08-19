@@ -16,7 +16,7 @@ final class ConfigStoreTests: XCTestCase {
 
     func testMissingFileYieldsEmptyConfig() {
         let store = ConfigStore(directory: dir)
-        XCTAssertEqual(store.load(), .fresh(AppConfig()))
+        XCTAssertEqual(store.load(), .loaded(AppConfig()))
     }
 
     func testSaveThenLoadRoundTrips() throws {
@@ -24,7 +24,7 @@ final class ConfigStoreTests: XCTestCase {
         var config = AppConfig()
         config.folders.append(FolderConfig(path: "/tmp/a"))
         try store.save(config)
-        XCTAssertEqual(store.load(), .fresh(config))
+        XCTAssertEqual(store.load(), .loaded(config))
     }
 
     func testCorruptFileIsRenamedAndEmptyConfigReturned() throws {
@@ -35,5 +35,18 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(
             atPath: dir.appendingPathComponent("config.json.bak").path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+    }
+
+    func testSaveOverExistingFileRoundTrips() throws {
+        let store = ConfigStore(directory: dir)
+        var first = AppConfig()
+        first.folders.append(FolderConfig(path: "/tmp/a"))
+        try store.save(first)
+        XCTAssertEqual(store.load(), .loaded(first))
+
+        var second = AppConfig()
+        second.folders.append(FolderConfig(path: "/tmp/b"))
+        try store.save(second)
+        XCTAssertEqual(store.load(), .loaded(second))
     }
 }

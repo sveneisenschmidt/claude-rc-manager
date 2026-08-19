@@ -29,4 +29,24 @@ final class ArgsTokenizerTests: XCTestCase {
     func testNoExpansion() {
         XCTAssertEqual(ArgsTokenizer.tokenize("~/x $HOME"), ["~/x", "$HOME"])
     }
+
+    func testUnterminatedQuote() {
+        XCTAssertEqual(ArgsTokenizer.tokenize(#"--name "a b"#), ["--name", "a b"])
+    }
+
+    func testEmptyQuotes() {
+        XCTAssertEqual(ArgsTokenizer.tokenize(#"--x '' """#), ["--x", "", ""])
+    }
+
+    func testGluedDoubleQuote() {
+        XCTAssertEqual(ArgsTokenizer.tokenize(#"--name="a b""#), ["--name=a b"])
+    }
+
+    func testLiteralBackslashInDoubleQuotes() {
+        XCTAssertEqual(ArgsTokenizer.tokenize(#""a\nb""#), [#"a\nb"#])
+    }
+
+    func testEscapedQuoteInDoubleQuotes() {
+        XCTAssertEqual(ArgsTokenizer.tokenize(#""say \"hi\"""#), [#"say "hi""#])
+    }
 }
