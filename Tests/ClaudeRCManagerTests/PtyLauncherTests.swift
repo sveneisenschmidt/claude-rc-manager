@@ -18,16 +18,7 @@ private final class LockedData: @unchecked Sendable {
     }
 }
 
-final class ScriptLauncherTests: XCTestCase {
-    /// Polls for the inner pid, which resolves asynchronously via pgrep.
-    private func waitForInnerPid(_ server: RunningServer) -> pid_t? {
-        for _ in 0..<30 {
-            if let pid = server.innerPid { return pid }
-            usleep(100_000)
-        }
-        return nil
-    }
-
+final class PtyLauncherTests: XCTestCase {
     /// True once `pid` no longer exists (kill 0 asks without signaling).
     private func waitUntilGone(_ pid: pid_t, timeout: TimeInterval = 3) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
@@ -41,40 +32,62 @@ final class ScriptLauncherTests: XCTestCase {
     }
 
     func testLaunchResolvesInnerPidAndStops() throws {
-        let launcher = ScriptLauncher()
+        let launcher = PtyLauncher()
         let exited = expectation(description: "exit")
         let server = try launcher.launch(
-            argv: ["/usr/bin/script", "-q", "/dev/null", "/bin/sleep", "30"],
+            argv: ["/bin/sleep", "30"],
             workingDirectory: NSTemporaryDirectory(),
             onOutput: { _ in },
             onExit: { _ in exited.fulfill() })
 
-        // Inner pid resolves within ~2 s.
-        let inner = try XCTUnwrap(waitForInnerPid(server), "inner pid must resolve")
+        // The pid is known at spawn time now — a smoke assertion.
+        let inner = try XCTUnwrap(server.innerPid, "inner pid must be known")
+        XCTAssertEqual(server.pids, [inner])
 
         server.stop(gracePeriod: 2)
         wait(for: [exited], timeout: 5)
-        // The inner sleep itself must be gone, not just script.
-        XCTAssertTrue(waitUntilGone(inner), "inner process must be gone after stop")
+        XCTAssertTrue(waitUntilGone(inner), "child must be gone after stop")
     }
 
-    /// script exits the moment its child detaches, so escalation may not key
-    /// on script's liveness: a child that ignores SIGTERM must still be
-    /// SIGKILLed once the grace period is over.
+    /// The CLI ignores SIGTERM entirely (verified 2026-08-19), so escalation
+    /// may not key on the child reacting to it: a child that ignores SIGTERM
+    /// must still be SIGKILLed once the grace period is over.
     func testTermIgnoringChildIsKilledAfterGracePeriod() throws {
-        let launcher = ScriptLauncher()
+        let launcher = PtyLauncher()
         let server = try launcher.launch(
-            argv: ["/usr/bin/script", "-q", "/dev/null",
-                   "/bin/bash", "-c", "trap '' TERM HUP; sleep 60"],
+            argv: ["/bin/bash", "-c", "trap '' TERM HUP; sleep 60"],
             workingDirectory: NSTemporaryDirectory(),
             onOutput: { _ in },
             onExit: { _ in })
 
-        let inner = try XCTUnwrap(waitForInnerPid(server), "inner pid must resolve")
+        let inner = try XCTUnwrap(server.innerPid, "inner pid must be known")
 
         server.stop(gracePeriod: 1)
         XCTAssertTrue(waitUntilGone(inner),
-                      "inner process must be SIGKILLed after the grace period")
+                      "child must be SIGKILLed after the grace period")
+    }
+
+    /// The regression this launcher exists for: `script` forwarded the stdin
+    /// EOF into the pty as Ctrl-D and the CLI exited seconds after start. A pty
+    /// we own and never write to gives the child no EOF at all.
+    func testChildReadingStdinDoesNotSeeEOF() throws {
+        let launcher = PtyLauncher()
+        let exited = expectation(description: "exit")
+        exited.isInverted = true
+        let server = try launcher.launch(
+            argv: ["/bin/cat"],
+            workingDirectory: NSTemporaryDirectory(),
+            onOutput: { _ in },
+            onExit: { _ in exited.fulfill() })
+        let pid = try XCTUnwrap(server.innerPid)
+
+        // /bin/cat exits immediately on stdin EOF; two seconds later it must
+        // still be sitting on the pty.
+        wait(for: [exited], timeout: 2)
+        XCTAssertEqual(Darwin.kill(pid, 0), 0, "child must still be alive")
+
+        server.stop(gracePeriod: 1)
+        XCTAssertTrue(waitUntilGone(pid), "child must be gone after stop")
     }
 
     /// End to end through the real pipeline: pty output -> onOutput -> LogWriter
@@ -89,9 +102,9 @@ final class ScriptLauncherTests: XCTestCase {
 
         let received = LockedData()
         let exited = expectation(description: "exit")
-        let launcher = ScriptLauncher()
+        let launcher = PtyLauncher()
         let server = try launcher.launch(
-            argv: ["/usr/bin/script", "-q", "/dev/null", "/bin/echo", "hello"],
+            argv: ["/bin/echo", "hello"],
             workingDirectory: NSTemporaryDirectory(),
             onOutput: { data in
                 writer.append(data)

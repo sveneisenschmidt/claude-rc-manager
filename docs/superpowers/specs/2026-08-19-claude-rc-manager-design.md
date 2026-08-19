@@ -155,8 +155,7 @@ On menu open, the app scans for `claude remote-control` processes it did not
 start itself (verified 2026-08-19 on this machine):
 
 - `pgrep -fl` matching the full command line for `remote-control`, same
-  user, minus the pids of app-managed servers (script pids and their inner
-  children).
+  user, minus the pids of app-managed servers.
 - Working directory per pid via `lsof -a -p <pid> -d cwd -Fn` (output lines
   `p<pid>` / `fcwd` / `n<path>`).
 
@@ -172,28 +171,35 @@ post-MVP follow-up.
 
 ### Command and process tree
 
-`script -q /dev/null <claude> remote-control --name <name> --spawn <mode>
-[--capacity <N>] [--no-]create-session-in-dir [--permission-mode <m>]
-<extraArgs…>` — `script` provides the pseudo-TTY the CLI expects. Working
-directory = the folder. stdin is explicitly `/dev/null` (script fails on
-socket stdin and must not inherit the app's).
+`<claude> remote-control --name <name> --spawn <mode> [--capacity <N>]
+[--no-]create-session-in-dir [--permission-mode <m>] <extraArgs…>` — the app
+spawns the CLI itself on a pseudo-TTY it owns. Working directory = the
+folder; stdin, stdout and stderr are the pty slave.
 
-**Signal reality (verified 2026-08-19 on this machine):** `script` puts the
-inner command into its **own session and process group** (`login_tty`).
-Signaling script's process group never reaches `claude` directly; it only
-dies as a side effect of the pty closing (SIGHUP), and a HUP/TERM-trapping
-child survives and is orphaned. Therefore:
+**Process reality (amended 2026-08-19, post-MVP test — replaces the original
+`script`-based design):**
 
-- After spawn, ServerProcess resolves the **inner child pid** via
-  `pgrep -P <script-pid>` (retried briefly until it appears).
-- All stop/kill signals target the **inner child's process group** (the
-  inner pid is its own group leader), and `script` is terminated afterwards.
-- `script`'s termination (Process terminationHandler) is the exit event; the
-  reported value is shown as `exited (status N)` — `script` collapses a
-  signal death into the raw signal number, so 9 can mean "exit 9" or
-  "SIGKILL"; the label does not claim to distinguish them.
+- `script -q /dev/null` with stdin `/dev/null` **forwards the stdin EOF into
+  the pty as Ctrl-D**: `claude remote-control` reached Ready and then exited
+  within seconds, so every server crash-looped. `script` also rejects pipe
+  stdin outright (`tcgetattr/ioctl: Operation not supported`). It is gone.
+- The launcher now creates the pty with `openpty` and spawns the CLI with
+  `posix_spawn` + `POSIX_SPAWN_SETSID`: the child is its **own session and
+  process group leader** (so `killpg` can never travel up into the app), the
+  parent closes the slave, holds the **master open for the server's whole
+  life and never writes to it** — which is exactly what keeps the CLI alive.
+- The pid is known at spawn time; the `pgrep -P` resolution of an inner child
+  is removed. Signals target that pid's process group, guarded by the
+  process-start-time identity check against pid recycling.
+- **The CLI ignores SIGTERM and SIGINT completely; only SIGKILL ends it.**
+  Stop therefore always escalates: SIGTERM (kept: harmless and future-proof),
+  then SIGKILL after the 5 s grace period.
+- Exit is observed with a `DispatchSource` process source plus a `waitpid`
+  reap; the reported value is shown as `exited (status N)` — the exit code
+  for a normal exit, the raw signal number for a signal death, so 9 can mean
+  "exit 9" or "SIGKILL"; the label does not claim to distinguish them.
 
-Log: stdout+stderr of `script` append to
+Log: stdout+stderr from the pty append to
 `~/Library/Logs/ClaudeRCManager/<id>.log` (the immutable UUID, so renames
 and duplicate names cannot mix logs; the menu's Open Log knows the mapping).
 The writer strips ANSI escape sequences and CR overwrites before appending
@@ -210,8 +216,8 @@ when larger than 5 MB.
 - **Manual Start** is allowed from `stopped`, `failed`, and `ended`; it
   resets the crash-loop counter and clears a crash-loop pause.
 - **Stop (user, incl. Stop All, incl. during restarting):** cancels any
-  pending restart timer, sends SIGTERM to the inner process group, SIGKILL
-  after 5 s, state `stopping → stopped`. No auto-restart — the user asked.
+  pending restart timer, sends SIGTERM to the server's process group, SIGKILL
+  after 5 s (which is what actually ends the CLI), state `stopping → stopped`. No auto-restart — the user asked.
 
 ### Start preconditions
 
@@ -262,7 +268,7 @@ Autostart: on launch, all `autostart` folders start in parallel (no
 ordering guarantees).
 
 Quit: `applicationShouldTerminate` returns `.terminateLater`, cancels all
-pending restart timers, stops all servers in parallel (SIGTERM to inner
+pending restart timers, stops all servers in parallel (SIGTERM to the server
 process groups, shared 5 s deadline, then SIGKILL for stragglers), then
 calls `NSApp.reply(toApplicationShouldTerminate: true)`. Force-quit (SIGKILL
 of the app) runs no cleanup and leaves servers running — accepted MVP
@@ -331,6 +337,3 @@ testable with a fake. UI is tested manually.
 - Detecting a folder that vanishes while its server runs
 - Importing or stopping external servers (MVP only detects and displays them)
 - Cleanup of orphaned servers after a force-quit of the app
-- Spawning the CLI on a directly-owned pty (posix_spawn + openpty) instead
-  of `script` — would give exact child status and cleaner signaling; the
-  pgrep approach is the smaller MVP step

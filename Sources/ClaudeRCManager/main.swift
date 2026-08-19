@@ -29,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let logDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Logs/ClaudeRCManager")
         let manager = ServerManager(
-            config: config, launcher: ScriptLauncher(), logDirectory: logDir)
+            config: config, launcher: PtyLauncher(), logDirectory: logDir)
         self.manager = manager
         // Preflight re-checks preconditions on every start, auto-restarts
         // included — and it runs on the main actor, so it must never call

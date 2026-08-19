@@ -5,12 +5,11 @@ import Foundation
 /// The output and exit callbacks are supplied at launch time (see
 /// `ProcessLaunching`), so no output can be produced before they are wired up.
 protocol RunningServer: AnyObject {
-    /// pid of the inner claude process (script's child), once resolved.
+    /// pid of the claude process. Known at spawn time (we spawn it directly).
     var innerPid: pid_t? { get }
-    /// All pids of this server's tree (script + inner child), for the
-    /// external-scan exclusion.
+    /// All pids of this server, for the external-scan exclusion.
     var pids: [pid_t] { get }
-    /// SIGTERM to the inner process group; SIGKILL after `gracePeriod`.
+    /// SIGTERM to the process group; SIGKILL after `gracePeriod`.
     func stop(gracePeriod: TimeInterval)
     /// Immediate SIGKILL to everything (quit deadline).
     func kill()
@@ -18,43 +17,63 @@ protocol RunningServer: AnyObject {
 
 protocol ProcessLaunching {
     /// `onOutput` is called with raw pty chunks on a reader thread; `onExit`
-    /// once with script's status when the process tree exits. Both are
-    /// installed before the process starts and cross threads (@Sendable).
+    /// once with the child's status when it exits. Both are installed before
+    /// the process starts and cross threads (@Sendable).
     func launch(argv: [String], workingDirectory: String,
                 onOutput: @escaping @Sendable (Data) -> Void,
                 onExit: @escaping @Sendable (Int32) -> Void) throws -> RunningServer
 }
 
-/// Real launcher: runs `script -q /dev/null ...`. Verified reality (spec:
-/// Command and process tree): script's child sits in its OWN session and
-/// process group, so signals must target the inner pid, which we resolve
-/// via pgrep -P. stdin is /dev/null (script fails on socket stdin).
-final class ScriptLauncher: ProcessLaunching {
+enum LaunchError: Error {
+    case ptyUnavailable(Int32)
+    case spawnFailed(Int32)
+}
+
+/// Real launcher: spawns the CLI on a pty this process owns (spec: Command and
+/// process tree, amended 2026-08-19).
+///
+/// Verified on this machine: `script -q /dev/null` with stdin `/dev/null`
+/// forwards the stdin EOF into the pty as Ctrl-D, and `claude remote-control`
+/// exits seconds after becoming ready — every server died and the app
+/// crash-looped. With a pty we own, the parent holds the master open forever
+/// and never writes to it, so the CLI never sees EOF and stays up.
+///
+/// The child is spawned with POSIX_SPAWN_SETSID, so it is its own session and
+/// process group leader: `killpg(pid, …)` reaches it and its descendants and
+/// can never travel up into this app.
+final class PtyLauncher: ProcessLaunching {
     /// @unchecked: mutable state is lock-protected or queue-confined.
     final class Server: RunningServer, @unchecked Sendable {
-        let process = Process()
+        private let pid: pid_t
+        /// Start time of `pid`, to detect pid recycling before signaling.
+        private let startedAt: UInt64?
+        /// The pty master. Held open for the server's whole life — closing it
+        /// (or writing to it) is what would kill the CLI. Never written to.
+        private let master: FileHandle
+        private let onOutput: @Sendable (Data) -> Void
+        private let onExit: @Sendable (Int32) -> Void
         private let queue = DispatchQueue(label: "server-process")
         private let lock = NSLock()
-        private var _innerPid: pid_t?
-        /// Start time of `_innerPid`, to detect pid recycling before signaling.
-        private var _innerStart: UInt64?
+        /// Lock-protected: set inside the same critical section that reaps the
+        /// child, so a signal can never race a reap and hit a recycled pid.
+        private var reaped = false
         /// Queue-confined: keeps repeated stop() calls from stacking timers.
         private var stopScheduled = false
+        /// Queue-confined.
+        private var exitSource: DispatchSourceProcess?
 
-        var innerPid: pid_t? {
-            lock.lock(); defer { lock.unlock() }
-            return _innerPid
-        }
+        var innerPid: pid_t? { pid }
+        var pids: [pid_t] { [pid] }
 
-        var pids: [pid_t] {
-            var result = [process.processIdentifier]
-            if let inner = innerPid { result.append(inner) }
-            return result
-        }
-
-        private func setInnerPid(_ pid: pid_t) {
-            let start = Self.startTime(of: pid)
-            lock.lock(); _innerPid = pid; _innerStart = start; lock.unlock()
+        init(pid: pid_t, master: Int32,
+             onOutput: @escaping @Sendable (Data) -> Void,
+             onExit: @escaping @Sendable (Int32) -> Void)
+        {
+            self.pid = pid
+            self.startedAt = Self.startTime(of: pid)
+            self.master = FileHandle(fileDescriptor: master, closeOnDealloc: true)
+            self.onOutput = onOutput
+            self.onExit = onExit
         }
 
         /// Process start time in microseconds, the identity half of a pid:
@@ -66,101 +85,104 @@ final class ScriptLauncher: ProcessLaunching {
             return UInt64(info.pbi_start_tvsec) * 1_000_000 + UInt64(info.pbi_start_tvusec)
         }
 
-        /// Signals the inner process group — but only if the pid still refers
-        /// to the process we resolved. Between resolution and signaling the
-        /// inner process can exit and its pid be reused, and killpg against a
-        /// stranger's process group cannot be taken back.
-        ///
-        /// When no start time was recorded (proc_pidinfo failed at resolve
-        /// time), script's liveness is the identity proof: while script is
-        /// alive, its child or its unreaped zombie still owns that pid, so
-        /// recycling is impossible. Refusing to signal in that case would
-        /// silently orphan a TERM-trapping inner claude.
-        private func signalInnerGroup(_ signal: Int32) {
+        /// Reader + exit watch. Installed before the caller can see the server,
+        /// so a process that dies instantly still reports its output and exit.
+        fileprivate func start() {
+            let output = onOutput
+            master.readabilityHandler = { handle in
+                let data = handle.availableData
+                guard !data.isEmpty else {
+                    handle.readabilityHandler = nil  // EOF
+                    return
+                }
+                output(data)
+            }
+            let source = DispatchSource.makeProcessSource(
+                identifier: pid, eventMask: .exit, queue: queue)
+            source.setEventHandler { [weak self] in self?.handleExit(probe: false) }
+            exitSource = source
+            source.activate()
+            // The child can die before the source is activated; kqueue-based
+            // process sources do not reliably report an exit that already
+            // happened. One WNOHANG probe closes that window (the child is
+            // never reaped anywhere else, so its zombie is still there).
+            queue.async { [weak self] in self?.handleExit(probe: true) }
+        }
+
+        /// Reaps the child and reports the exit exactly once.
+        private func handleExit(probe: Bool) {  // queue-confined
             lock.lock()
-            let pid = _innerPid
-            let recorded = _innerStart
+            if reaped { lock.unlock(); return }
+            var status: Int32 = 0
+            let result = waitpid(pid, &status, probe ? WNOHANG : 0)
+            if probe && result == 0 { lock.unlock(); return }  // still running
+            reaped = true
             lock.unlock()
-            guard let pid else { return }
-            if let recorded {
-                guard let current = Self.startTime(of: pid), current == recorded else { return }
-            } else if !process.isRunning {
-                return  // no identity proof and script is gone: refuse to guess
+
+            exitSource?.cancel()
+            exitSource = nil
+            drain()
+            master.readabilityHandler = nil
+            onExit(result == pid ? Self.exitCode(from: status) : -1)
+        }
+
+        /// Non-blocking read of whatever the pty still holds. The pty discards
+        /// buffered output once the last slave fd closes, so the tail of a
+        /// short-lived child can otherwise be lost between its exit and the
+        /// reader's next wakeup. Non-blocking on purpose: a descendant may keep
+        /// the slave open, in which case there is no EOF to wait for.
+        private func drain() {
+            let fd = master.fileDescriptor
+            let flags = fcntl(fd, F_GETFL)
+            guard flags != -1, fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1 else { return }
+            var buffer = [UInt8](repeating: 0, count: 65536)
+            while true {
+                let n = buffer.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
+                guard n > 0 else { return }  // EOF, EAGAIN or error
+                onOutput(Data(buffer[0..<n]))
+            }
+        }
+
+        /// Exit status in the wording ServerProcess shows: the exit code for a
+        /// normal exit, the raw signal number for a signal death.
+        static func exitCode(from status: Int32) -> Int32 {
+            let signal = status & 0x7f
+            return signal == 0 ? (status >> 8) & 0xff : signal
+        }
+
+        /// Signals the child's process group — but only while we still hold
+        /// its identity. Until the child is reaped its pid cannot be recycled
+        /// (the zombie owns it), and the reap happens under the same lock, so
+        /// killpg can never land on a stranger's group. The start-time check is
+        /// the belt to that suspenders.
+        private func signalGroup(_ signal: Int32) {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !reaped else { return }
+            if let startedAt, let current = Self.startTime(of: pid), current != startedAt {
+                return
             }
             killpg(pid, signal)
-        }
-
-        /// Blocking retry on `queue`; also used by stop() so a stop right
-        /// after launch still finds the inner pid before signaling.
-        private func resolveInnerPidBlocking() -> pid_t? {
-            if let pid = innerPid { return pid }
-            let scriptPid = process.processIdentifier
-            for _ in 0..<20 {
-                if let pid = Self.childPid(of: scriptPid) {
-                    setInnerPid(pid)
-                    return pid
-                }
-                if !process.isRunning { return nil }
-                usleep(100_000)
-            }
-            return nil
-        }
-
-        fileprivate func resolveInnerPid() {
-            queue.async { [weak self] in _ = self?.resolveInnerPidBlocking() }
-        }
-
-        static func childPid(of parent: pid_t) -> pid_t? {
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-            p.arguments = ["-P", String(parent)]
-            let out = Pipe()
-            p.standardOutput = out
-            guard (try? p.run()) != nil else { return nil }
-            // Read before waiting: a full pipe buffer would deadlock the child.
-            let data = out.fileHandleForReading.readDataToEndOfFile()
-            p.waitUntilExit()
-            guard let line = String(data: data, encoding: .utf8)?
-                .split(separator: "\n").first else { return nil }
-            return pid_t(line.trimmingCharacters(in: .whitespaces))
         }
 
         func stop(gracePeriod: TimeInterval) {
             queue.async { [weak self] in
                 guard let self, !self.stopScheduled else { return }
                 self.stopScheduled = true
-                // Wait for the inner pid if it has not resolved yet —
-                // signaling only script would orphan the inner claude.
-                if self.resolveInnerPidBlocking() != nil {
-                    // Inner pid is its own group leader (login_tty session).
-                    self.signalInnerGroup(SIGTERM)
-                }
-                if self.process.isRunning { self.process.terminate() }
-                // Grace period runs from the moment TERM was actually sent,
-                // not from the stop() call: resolving the pid can take a while.
+                self.signalGroup(SIGTERM)
                 // Strong on purpose: the escalation must outlive the owner —
                 // when the ServerProcess holding this server is released
                 // mid-grace-period (folder removed), a weak capture would drop
-                // the SIGKILL and orphan a TERM-trapping inner claude. Bounded
-                // by gracePeriod, so the extra retain is short-lived.
+                // the SIGKILL and orphan the CLI, which ignores TERM entirely.
+                // Bounded by gracePeriod, so the extra retain is short-lived.
                 self.queue.asyncAfter(deadline: .now() + gracePeriod) {
-                    // script exits as soon as its child detaches, so its
-                    // liveness says nothing about the inner claude: escalate
-                    // on the inner pid, which a TERM-trapping child keeps
-                    // alive past the grace period. signalInnerGroup carries
-                    // its own existence/identity check.
-                    self.signalInnerGroup(SIGKILL)
-                    if self.process.isRunning { self.kill() }
+                    self.signalGroup(SIGKILL)
                 }
             }
         }
 
         func kill() {
-            signalInnerGroup(SIGKILL)
-            if process.isRunning {
-                // script is not a group leader; signal the pid directly.
-                Darwin.kill(process.processIdentifier, SIGKILL)
-            }
+            signalGroup(SIGKILL)
         }
     }
 
@@ -169,31 +191,75 @@ final class ScriptLauncher: ProcessLaunching {
                 onExit: @escaping @Sendable (Int32) -> Void) throws -> RunningServer
     {
         precondition(!argv.isEmpty)
-        let server = Server()
-        let p = server.process
-        p.executableURL = URL(fileURLWithPath: argv[0])
-        p.arguments = Array(argv.dropFirst())
-        p.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
-        p.standardInput = FileHandle(forReadingAtPath: "/dev/null")
-        let pipe = Pipe()
-        p.standardOutput = pipe
-        p.standardError = pipe
-        // Handlers are installed before run(): a process that fails instantly
-        // would otherwise have its first chunk (the error message) dropped.
-        pipe.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            guard !data.isEmpty else {
-                handle.readabilityHandler = nil  // EOF
-                return
-            }
-            onOutput(data)
+        var master: Int32 = 0
+        var slave: Int32 = 0
+        guard openpty(&master, &slave, nil, nil, nil) == 0 else {
+            throw LaunchError.ptyUnavailable(errno)
         }
-        p.terminationHandler = { proc in
-            pipe.fileHandleForReading.readabilityHandler = nil
-            onExit(proc.terminationStatus)
+        // A zero window size makes some TUIs render nothing at all.
+        var size = winsize(ws_row: 24, ws_col: 80, ws_xpixel: 0, ws_ypixel: 0)
+        _ = ioctl(master, TIOCSWINSZ, &size)
+
+        var actions: posix_spawn_file_actions_t?
+        posix_spawn_file_actions_init(&actions)
+        posix_spawn_file_actions_adddup2(&actions, slave, 0)
+        posix_spawn_file_actions_adddup2(&actions, slave, 1)
+        posix_spawn_file_actions_adddup2(&actions, slave, 2)
+        posix_spawn_file_actions_addclose(&actions, slave)
+        posix_spawn_file_actions_addclose(&actions, master)
+        posix_spawn_file_actions_addchdir_np(&actions, workingDirectory)
+
+        var attributes: posix_spawnattr_t?
+        posix_spawnattr_init(&attributes)
+        // Own session (and process group): killpg against the child can never
+        // travel up into this app, and the CLI gets the fresh session it wants.
+        posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETSID))
+
+        var arguments = Self.cStrings(argv)
+        var environment = Self.cStrings(Self.childEnvironment())
+        defer {
+            posix_spawn_file_actions_destroy(&actions)
+            posix_spawnattr_destroy(&attributes)
+            arguments.forEach { free($0) }
+            environment.forEach { free($0) }
         }
-        try p.run()
-        server.resolveInnerPid()
+
+        var pid: pid_t = 0
+        let result = posix_spawn(&pid, argv[0], &actions, &attributes,
+                                 &arguments, &environment)
+        // The parent must not keep a slave fd: it would hold the pty open past
+        // the child's death and no EOF would ever reach the reader.
+        close(slave)
+        guard result == 0 else {
+            close(master)
+            throw LaunchError.spawnFailed(result)
+        }
+
+        let server = Server(pid: pid, master: master,
+                            onOutput: onOutput, onExit: onExit)
+        server.start()
         return server
+    }
+
+    /// The app's environment plus a TERM the CLI can render into, if the app
+    /// was launched without one (Finder/launchd give none).
+    private static func childEnvironment() -> [String] {
+        var result: [String] = []
+        var entry = environ
+        while let value = entry.pointee {
+            result.append(String(cString: value))
+            entry += 1
+        }
+        if !result.contains(where: { $0.hasPrefix("TERM=") }) {
+            result.append("TERM=xterm-256color")
+        }
+        return result
+    }
+
+    /// NULL-terminated argv/envp; the caller frees the copies.
+    private static func cStrings(_ values: [String]) -> [UnsafeMutablePointer<CChar>?] {
+        var result: [UnsafeMutablePointer<CChar>?] = values.map { strdup($0) }
+        result.append(nil)
+        return result
     }
 }

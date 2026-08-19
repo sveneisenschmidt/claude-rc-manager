@@ -89,8 +89,8 @@ final class ServerManager {
         processes.forEach { $0.stop() }
     }
 
-    /// Script + inner pids of managed servers, for the external-scan
-    /// exclusion (the script command line matches the scan pattern too).
+    /// Pids of managed servers, for the external-scan exclusion (their
+    /// command lines match the scan pattern too).
     func ownPids() -> Set<pid_t> {
         Set(processes.flatMap { $0.pids })
     }

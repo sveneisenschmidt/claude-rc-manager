@@ -6,7 +6,6 @@ final class CommandBuilderTests: XCTestCase {
         let f = FolderConfig(path: "/tmp/proj")
         let argv = CommandBuilder.argv(for: f, claudePath: "/usr/local/bin/claude")
         XCTAssertEqual(argv, [
-            "/usr/bin/script", "-q", "/dev/null",
             "/usr/local/bin/claude", "remote-control",
             "--name", "proj",
             "--spawn", "same-dir",
@@ -22,7 +21,6 @@ final class CommandBuilderTests: XCTestCase {
         f.extraArgs = #"--debug-file "/tmp/my logs/rc.log""#
         let argv = CommandBuilder.argv(for: f, claudePath: "/x/claude")
         XCTAssertEqual(argv, [
-            "/usr/bin/script", "-q", "/dev/null",
             "/x/claude", "remote-control",
             "--name", "proj",
             "--spawn", "worktree",
@@ -40,7 +38,6 @@ final class CommandBuilderTests: XCTestCase {
         f.extraArgs = "--verbose"
         let argv = CommandBuilder.argv(for: f, claudePath: "/x/claude")
         XCTAssertEqual(argv, [
-            "/usr/bin/script", "-q", "/dev/null",
             "/x/claude", "remote-control",
             "--name", "proj",
             "--spawn", "session",
