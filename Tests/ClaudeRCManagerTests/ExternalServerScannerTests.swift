@@ -6,6 +6,7 @@ final class ExternalServerScannerTests: XCTestCase {
         let output = """
         123 /Users/x/.local/bin/claude remote-control --spawn same-dir
         456 grep remote-control
+        555 /usr/bin/grep claude remote-control
         789 /usr/local/bin/claude remote-control
         999 /Users/x/.local/bin/claude remote-control
         """
