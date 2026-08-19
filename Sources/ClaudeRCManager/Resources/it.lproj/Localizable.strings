@@ -1,0 +1,82 @@
+/* Italian catalog. Keys mirror en.lproj exactly. Status glyphs (○ ● ◐ ✕)
+   are unchanged; only the word is translated. Technical terms the user
+   needs verbatim (claude, Claude Code, claude auth login, Terminal,
+   /Applications, config.json, .bak, worktree) and the product name
+   "Claude RC Manager" stay untranslated. */
+
+/* MARK: menu */
+"menu.addFolder" = "Aggiungi cartella…";
+"menu.startAll" = "Avvia tutti";
+"menu.stopAll" = "Arresta tutti";
+"menu.startAtLogin" = "Apri al login";
+"menu.startAtLogin.tooltip" = "Installa prima l'app in /Applications";
+"menu.quit" = "Esci da Claude RC Manager";
+"menu.openLogin" = "Accedi in Terminal…";
+"menu.start" = "Avvia";
+"menu.stop" = "Arresta";
+"menu.openLog" = "Apri il log";
+"menu.settings" = "Impostazioni…";
+"menu.remove" = "Rimuovi…";
+
+/* MARK: warning rows */
+"warning.cliNotFound" = "⚠️ CLI claude non trovata — installa Claude Code";
+"warning.notLoggedIn" = "⚠️ Accesso a Claude non effettuato";
+"warning.configCorrupt" = "⚠️ config.json era danneggiato — spostato in config.json.bak";
+"warning.configUnreadable" = "⚠️ Impossibile leggere o conservare config.json — le modifiche non vengono salvate";
+
+/* MARK: external servers */
+"external.header" = "Server esterni";
+"external.row" = "%@ — in esecuzione (esterno)";
+"external.pidFallback" = "PID %@";
+
+/* MARK: status labels */
+"status.stopped" = "○ arrestato";
+"status.starting" = "◐ avvio in corso";
+"status.running" = "● in esecuzione";
+"status.stopping" = "◐ arresto in corso";
+"status.restarting" = "◐ riavvio in corso…";
+"status.ended" = "○ terminato";
+"status.failed" = "✕ non riuscito (%@)";
+
+/* MARK: failure reasons */
+"reason.claudeNotFound" = "claude non trovato";
+"reason.notLoggedIn" = "accesso non effettuato";
+"reason.folderMissing" = "cartella mancante";
+"reason.crashLoop" = "ciclo di arresti anomali — controlla il log";
+"reason.launchError" = "errore di avvio";
+"reason.exited" = "terminato, stato %d";
+
+/* MARK: settings window */
+"settings.title" = "%@ — Impostazioni";
+"settings.name" = "Nome";
+"settings.path" = "Percorso";
+"settings.spawnMode" = "Modalità di avvio";
+"settings.createSessionInDir" = "Crea in anticipo la sessione nella cartella";
+"settings.capacity" = "Capacità: %d";
+"settings.permissionMode" = "Modalità di autorizzazione";
+"settings.permissionMode.cliDefault" = "Valore predefinito della CLI";
+"settings.extraArgs" = "Argomenti aggiuntivi";
+"settings.autostart" = "Avvia automaticamente";
+"settings.autoRestart" = "Riavvia dopo un arresto anomalo";
+"settings.applyHint" = "Le modifiche vengono applicate al prossimo avvio del server.";
+"settings.save" = "Salva";
+"settings.cancel" = "Annulla";
+
+/* MARK: alerts */
+"alert.terminal.title" = "Impossibile aprire Terminal";
+"alert.terminal.body" = "L'autorizzazione all'automazione potrebbe essere negata. Puoi concederla in Impostazioni di Sistema > Privacy e sicurezza > Automazione, oppure eseguire tu stesso `claude auth login` in un terminale.";
+"alert.remove.title" = "Rimuovere “%@”?";
+"alert.remove.body" = "Il server viene arrestato e la cartella rimossa dall'elenco. Il file di log viene mantenuto.";
+"alert.remove.confirm" = "Rimuovi";
+"alert.remove.cancel" = "Annulla";
+"alert.duplicateFolder.title" = "Cartella già aggiunta";
+"alert.saveFailed.title" = "Impossibile salvare le impostazioni";
+"alert.saveFailed.unreadable" = "Non è stato possibile leggere o mettere da parte il file config.json esistente, quindi non viene sovrascritto. Le modifiche restano attive fino alla chiusura dell'app.";
+"alert.saveFailed.body" = "%@ Le modifiche restano attive fino alla chiusura dell'app.";
+"alert.loginItem.title" = "Impossibile modificare l'elemento login";
+"alert.loginItem.requiresApproval" = "Autorizza Claude RC Manager in Impostazioni di Sistema > Generali > Elementi login.";
+
+/* MARK: accessibility (the app name is a product name and stays fixed) */
+"a11y.warning" = "Claude RC Manager — avviso";
+"a11y.active" = "Claude RC Manager — attivo";
+"a11y.idle" = "Claude RC Manager — inattivo";

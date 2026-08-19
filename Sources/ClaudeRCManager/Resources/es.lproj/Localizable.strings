@@ -1,0 +1,82 @@
+/* Spanish catalog. Keys mirror en.lproj exactly. Status glyphs (○ ● ◐ ✕)
+   are unchanged; only the word is translated. Technical terms the user
+   needs verbatim (claude, Claude Code, claude auth login, Terminal,
+   /Applications, config.json, .bak, worktree) and the product name
+   "Claude RC Manager" stay untranslated. */
+
+/* MARK: menu */
+"menu.addFolder" = "Añadir carpeta…";
+"menu.startAll" = "Iniciar todos";
+"menu.stopAll" = "Detener todos";
+"menu.startAtLogin" = "Abrir al iniciar sesión";
+"menu.startAtLogin.tooltip" = "Primero instala la app en /Applications";
+"menu.quit" = "Salir de Claude RC Manager";
+"menu.openLogin" = "Iniciar sesión en Terminal…";
+"menu.start" = "Iniciar";
+"menu.stop" = "Detener";
+"menu.openLog" = "Abrir registro";
+"menu.settings" = "Ajustes…";
+"menu.remove" = "Eliminar…";
+
+/* MARK: warning rows */
+"warning.cliNotFound" = "⚠️ No se ha encontrado la CLI de claude — instala Claude Code";
+"warning.notLoggedIn" = "⚠️ No se ha iniciado sesión en Claude";
+"warning.configCorrupt" = "⚠️ config.json estaba dañado — se ha movido a config.json.bak";
+"warning.configUnreadable" = "⚠️ No se ha podido leer ni conservar config.json — los cambios no se guardan";
+
+/* MARK: external servers */
+"external.header" = "Servidores externos";
+"external.row" = "%@ — en ejecución (externo)";
+"external.pidFallback" = "PID %@";
+
+/* MARK: status labels */
+"status.stopped" = "○ detenido";
+"status.starting" = "◐ iniciando";
+"status.running" = "● en ejecución";
+"status.stopping" = "◐ deteniendo";
+"status.restarting" = "◐ reiniciando…";
+"status.ended" = "○ finalizado";
+"status.failed" = "✕ fallido (%@)";
+
+/* MARK: failure reasons */
+"reason.claudeNotFound" = "no se ha encontrado claude";
+"reason.notLoggedIn" = "sesión no iniciada";
+"reason.folderMissing" = "falta la carpeta";
+"reason.crashLoop" = "bucle de fallos — consulta el registro";
+"reason.launchError" = "error de inicio";
+"reason.exited" = "ha finalizado, estado %d";
+
+/* MARK: settings window */
+"settings.title" = "%@ — Ajustes";
+"settings.name" = "Nombre";
+"settings.path" = "Ruta";
+"settings.spawnMode" = "Modo de inicio";
+"settings.createSessionInDir" = "Crear la sesión en la carpeta de antemano";
+"settings.capacity" = "Capacidad: %d";
+"settings.permissionMode" = "Modo de permisos";
+"settings.permissionMode.cliDefault" = "Valor por omisión de la CLI";
+"settings.extraArgs" = "Argumentos adicionales";
+"settings.autostart" = "Iniciar automáticamente";
+"settings.autoRestart" = "Reiniciar tras un fallo";
+"settings.applyHint" = "Los cambios se aplicarán la próxima vez que se inicie el servidor.";
+"settings.save" = "Guardar";
+"settings.cancel" = "Cancelar";
+
+/* MARK: alerts */
+"alert.terminal.title" = "No se ha podido abrir Terminal";
+"alert.terminal.body" = "Puede que el permiso de automatización esté denegado. Puedes concederlo en Ajustes del Sistema > Privacidad y seguridad > Automatización, o ejecutar `claude auth login` tú mismo en un terminal.";
+"alert.remove.title" = "¿Eliminar «%@»?";
+"alert.remove.body" = "El servidor se detiene y la carpeta se elimina de la lista. El archivo de registro se conserva.";
+"alert.remove.confirm" = "Eliminar";
+"alert.remove.cancel" = "Cancelar";
+"alert.duplicateFolder.title" = "La carpeta ya está añadida";
+"alert.saveFailed.title" = "No se han podido guardar los ajustes";
+"alert.saveFailed.unreadable" = "No se ha podido leer ni apartar el archivo config.json existente, así que no se sobrescribe. Los cambios se aplican hasta que salgas de la app.";
+"alert.saveFailed.body" = "%@ Los cambios se aplican hasta que salgas de la app.";
+"alert.loginItem.title" = "No se ha podido cambiar el ítem de inicio de sesión";
+"alert.loginItem.requiresApproval" = "Autoriza Claude RC Manager en Ajustes del Sistema > General > Ítems de inicio de sesión.";
+
+/* MARK: accessibility (the app name is a product name and stays fixed) */
+"a11y.warning" = "Claude RC Manager — advertencia";
+"a11y.active" = "Claude RC Manager — activo";
+"a11y.idle" = "Claude RC Manager — inactivo";

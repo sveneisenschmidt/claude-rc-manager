@@ -1,0 +1,82 @@
+/* French catalog. Keys mirror en.lproj exactly. Status glyphs (○ ● ◐ ✕)
+   are unchanged; only the word is translated. Technical terms the user
+   needs verbatim (claude, Claude Code, claude auth login, Terminal,
+   /Applications, config.json, .bak, worktree) and the product name
+   "Claude RC Manager" stay untranslated. */
+
+/* MARK: menu */
+"menu.addFolder" = "Ajouter un dossier…";
+"menu.startAll" = "Tout démarrer";
+"menu.stopAll" = "Tout arrêter";
+"menu.startAtLogin" = "Ouvrir à la session";
+"menu.startAtLogin.tooltip" = "Installer d'abord l'app dans /Applications";
+"menu.quit" = "Quitter Claude RC Manager";
+"menu.openLogin" = "Se connecter dans Terminal…";
+"menu.start" = "Démarrer";
+"menu.stop" = "Arrêter";
+"menu.openLog" = "Ouvrir le journal";
+"menu.settings" = "Réglages…";
+"menu.remove" = "Supprimer…";
+
+/* MARK: warning rows */
+"warning.cliNotFound" = "⚠️ CLI claude introuvable — installer Claude Code";
+"warning.notLoggedIn" = "⚠️ Claude non connecté";
+"warning.configCorrupt" = "⚠️ config.json était endommagé — déplacé vers config.json.bak";
+"warning.configUnreadable" = "⚠️ Impossible de lire ou de conserver config.json — les modifications ne sont pas enregistrées";
+
+/* MARK: external servers */
+"external.header" = "Serveurs externes";
+"external.row" = "%@ — en cours d'exécution (externe)";
+"external.pidFallback" = "PID %@";
+
+/* MARK: status labels */
+"status.stopped" = "○ arrêté";
+"status.starting" = "◐ démarrage";
+"status.running" = "● en cours d'exécution";
+"status.stopping" = "◐ arrêt";
+"status.restarting" = "◐ redémarrage…";
+"status.ended" = "○ terminé";
+"status.failed" = "✕ échec (%@)";
+
+/* MARK: failure reasons */
+"reason.claudeNotFound" = "claude introuvable";
+"reason.notLoggedIn" = "non connecté";
+"reason.folderMissing" = "dossier introuvable";
+"reason.crashLoop" = "boucle de plantages — consulter le journal";
+"reason.launchError" = "erreur de lancement";
+"reason.exited" = "quitté, code %d";
+
+/* MARK: settings window */
+"settings.title" = "%@ — Réglages";
+"settings.name" = "Nom";
+"settings.path" = "Chemin";
+"settings.spawnMode" = "Mode de lancement";
+"settings.createSessionInDir" = "Créer la session dans le dossier au préalable";
+"settings.capacity" = "Capacité : %d";
+"settings.permissionMode" = "Mode d'autorisation";
+"settings.permissionMode.cliDefault" = "Valeur par défaut de la CLI";
+"settings.extraArgs" = "Arguments supplémentaires";
+"settings.autostart" = "Démarrer automatiquement";
+"settings.autoRestart" = "Redémarrer après un plantage";
+"settings.applyHint" = "Les modifications s'appliqueront au prochain démarrage du serveur.";
+"settings.save" = "Enregistrer";
+"settings.cancel" = "Annuler";
+
+/* MARK: alerts */
+"alert.terminal.title" = "Impossible d'ouvrir Terminal";
+"alert.terminal.body" = "L'autorisation d'automatisation est peut-être refusée. Elle s'accorde dans Réglages Système > Confidentialité et sécurité > Automatisation ; sinon, exécuter `claude auth login` soi-même dans un terminal.";
+"alert.remove.title" = "Supprimer « %@ » ?";
+"alert.remove.body" = "Le serveur est arrêté et le dossier retiré de la liste. Le fichier journal est conservé.";
+"alert.remove.confirm" = "Supprimer";
+"alert.remove.cancel" = "Annuler";
+"alert.duplicateFolder.title" = "Dossier déjà ajouté";
+"alert.saveFailed.title" = "Impossible d'enregistrer les réglages";
+"alert.saveFailed.unreadable" = "Le fichier config.json existant n'a pas pu être lu ni mis de côté ; il n'est donc pas remplacé. Les modifications s'appliquent jusqu'à la fermeture de l'app.";
+"alert.saveFailed.body" = "%@ Les modifications s'appliquent jusqu'à la fermeture de l'app.";
+"alert.loginItem.title" = "Impossible de modifier l'élément d'ouverture";
+"alert.loginItem.requiresApproval" = "Autoriser Claude RC Manager dans Réglages Système > Général > Ouverture.";
+
+/* MARK: accessibility (the app name is a product name and stays fixed) */
+"a11y.warning" = "Claude RC Manager — avertissement";
+"a11y.active" = "Claude RC Manager — actif";
+"a11y.idle" = "Claude RC Manager — inactif";
