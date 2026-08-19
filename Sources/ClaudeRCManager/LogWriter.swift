@@ -3,19 +3,56 @@ import Foundation
 /// Appends a server's pty output to its log file. The pty stream contains
 /// ANSI escapes and CR overwrites (spec: Command and process tree); filter
 /// them so the log is readable in a text editor.
+///
+/// Reads arrive in arbitrary chunks, so an escape sequence or a multi-byte
+/// UTF-8 codepoint can straddle two `append` calls. Only the prefix that
+/// ends on a safe boundary is written; the rest is carried over in `pending`.
 final class LogWriter {
     private let handle: FileHandle
+    private var pending = Data()
+    private var closed = false
     let url: URL
 
-    /// CSI (ESC [ ... final byte), OSC (ESC ] ... BEL or ESC \), other
-    /// two-byte ESC sequences, then lone CR and BS characters.
+    /// Bytes we are willing to hold back waiting for a boundary. Beyond this
+    /// the carry-over is force-flushed so a malformed stream cannot grow it.
+    private static let maxCarryOver = 4096
+
+    /// CSI (ESC [ params intermediates final), OSC (ESC ] ... BEL or ESC \),
+    /// other Fp/nF/Fs escapes (ESC ( B, ESC =, ESC >, ...), then lone CR and BS.
     private static let ansiPattern = try! NSRegularExpression(
-        pattern: "\u{1B}\\[[0-9;?]*[ -/]*[@-~]|\u{1B}\\][^\u{07}\u{1B}]*(\u{07}|\u{1B}\\\\)|\u{1B}[@-_]|[\r\u{08}]"
+        pattern: "\u{1B}\\[[0-?]*[ -/]*[@-~]"
+            + "|\u{1B}\\][^\u{07}\u{1B}]*(?:\u{07}|\u{1B}\\\\)"
+            + "|\u{1B}[ -/]*[0-Z\\\\^-~]"
+            + "|[\r\u{08}]"
     )
 
     static func filter(_ text: String) -> String {
         let range = NSRange(text.startIndex..., in: text)
         return ansiPattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+    }
+
+    /// Length of the largest prefix of `data` that ends on a UTF-8 boundary
+    /// and outside an escape sequence.
+    static func safeSplit(_ data: Data) -> Int {
+        var end = data.count
+        // Back off an incomplete trailing escape sequence (bounded scan).
+        var i = data.count - 1
+        var scanned = 0
+        while i >= 0, scanned < 64 {
+            if data[data.startIndex + i] == 0x1B { end = min(end, i); break }
+            i -= 1
+            scanned += 1
+        }
+        // Back off an incomplete trailing UTF-8 codepoint.
+        var j = end - 1
+        while j >= 0, j > end - 4 {
+            let b = data[data.startIndex + j]
+            if b & 0b1100_0000 == 0b1000_0000 { j -= 1; continue }  // continuation byte
+            let need = b < 0x80 ? 1 : (b < 0xE0 ? 2 : (b < 0xF0 ? 3 : 4))
+            if j + need > end { end = j }
+            break
+        }
+        return max(0, end)
     }
 
     static func rotateIfNeeded(at url: URL, maxBytes: Int = 5 * 1024 * 1024) {
@@ -36,16 +73,40 @@ final class LogWriter {
             fm.createFile(atPath: url.path, contents: nil)
         }
         handle = try FileHandle(forWritingTo: url)
-        handle.seekToEndOfFile()
+        try handle.seekToEnd()
     }
 
     func append(_ chunk: Data) {
-        guard let text = String(data: chunk, encoding: .utf8) else { return }
-        let filtered = LogWriter.filter(text)
-        if let data = filtered.data(using: .utf8), !data.isEmpty {
-            handle.write(data)
-        }
+        guard !closed else { return }
+        pending.append(chunk)
+        var split = LogWriter.safeSplit(pending)
+        if split == 0 && pending.count > LogWriter.maxCarryOver { split = pending.count }
+        guard split > 0 else { return }
+        let ready = Data(pending.prefix(split))
+        pending.removeFirst(split)
+        write(ready)
     }
 
-    deinit { try? handle.close() }
+    /// Flushes whatever is still held back and closes the handle. Idempotent.
+    func close() {
+        guard !closed else { return }
+        closed = true
+        if !pending.isEmpty {
+            let rest = pending
+            pending.removeAll()
+            write(rest)
+        }
+        try? handle.close()
+    }
+
+    /// `FileHandle.write(_:)` is the ObjC overload: it raises an uncatchable
+    /// NSException on a full disk. The throwing variant reports instead.
+    private func write(_ data: Data) {
+        // String(decoding:) never fails; invalid bytes become U+FFFD.
+        let filtered = LogWriter.filter(String(decoding: data, as: UTF8.self))
+        guard !filtered.isEmpty else { return }
+        try? handle.write(contentsOf: Data(filtered.utf8))
+    }
+
+    deinit { close() }
 }

@@ -18,6 +18,7 @@ final class CommandBuilderTests: XCTestCase {
     func testWorktreeModeWithQuotedExtraArgs() {
         var f = FolderConfig(path: "/tmp/proj")
         f.spawnMode = .worktree
+        f.capacity = 7
         f.extraArgs = #"--debug-file "/tmp/my logs/rc.log""#
         let argv = CommandBuilder.argv(for: f, claudePath: "/x/claude")
         XCTAssertEqual(argv, [
@@ -25,7 +26,7 @@ final class CommandBuilderTests: XCTestCase {
             "/x/claude", "remote-control",
             "--name", "proj",
             "--spawn", "worktree",
-            "--capacity", "32",
+            "--capacity", "7",
             "--no-create-session-in-dir",
             "--debug-file", "/tmp/my logs/rc.log",
         ])

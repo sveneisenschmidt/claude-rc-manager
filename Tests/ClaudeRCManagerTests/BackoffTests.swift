@@ -41,6 +41,22 @@ final class BackoffTests: XCTestCase {
         XCTAssertEqual(p.recordExit(runDuration: 1), .restart(after: 2))
     }
 
+    func testExitExactlyAtFastExitWindowIsNotFast() {
+        var p = RestartPolicy()
+        // 5 s is the window bound: not a fast exit, so three in a row still restart.
+        XCTAssertEqual(p.recordExit(runDuration: 5), .restart(after: 1))
+        XCTAssertEqual(p.recordExit(runDuration: 5), .restart(after: 2))
+        XCTAssertEqual(p.recordExit(runDuration: 5), .restart(after: 4))
+    }
+
+    func testExitExactlyAtStableRunDurationResets() {
+        var p = RestartPolicy()
+        _ = p.recordExit(runDuration: 1)
+        _ = p.recordExit(runDuration: 1)
+        XCTAssertEqual(p.recordExit(runDuration: 300), .restart(after: 1))
+        XCTAssertEqual(p.recordExit(runDuration: 1), .restart(after: 2))
+    }
+
     func testManualStartResets() {
         var p = RestartPolicy()
         _ = p.recordExit(runDuration: 1)
