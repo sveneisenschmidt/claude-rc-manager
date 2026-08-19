@@ -1,6 +1,23 @@
 import XCTest
 @testable import ClaudeRCManager
 
+/// Lock-guarded accumulator for data delivered on the pty reader thread.
+/// A plain `var` captured by the @Sendable output callback is a concurrent
+/// mutation of a captured variable (an error in Swift 6); the lock lives
+/// inside the reference type instead, with identical semantics.
+private final class LockedData: @unchecked Sendable {
+    private let lock = NSLock()
+    private var data = Data()
+
+    func append(_ chunk: Data) {
+        lock.lock(); data.append(chunk); lock.unlock()
+    }
+
+    func snapshot() -> Data {
+        lock.lock(); defer { lock.unlock() }; return data
+    }
+}
+
 final class ScriptLauncherTests: XCTestCase {
     /// Polls for the inner pid, which resolves asynchronously via pgrep.
     private func waitForInnerPid(_ server: RunningServer) -> pid_t? {
@@ -70,8 +87,7 @@ final class ScriptLauncherTests: XCTestCase {
         let logURL = dir.appendingPathComponent("server.log")
         let writer = try LogWriter(url: logURL)
 
-        let lock = NSLock()
-        var received = Data()
+        let received = LockedData()
         let exited = expectation(description: "exit")
         let launcher = ScriptLauncher()
         let server = try launcher.launch(
@@ -79,7 +95,7 @@ final class ScriptLauncherTests: XCTestCase {
             workingDirectory: NSTemporaryDirectory(),
             onOutput: { data in
                 writer.append(data)
-                lock.lock(); received.append(data); lock.unlock()
+                received.append(data)
             },
             onExit: { _ in exited.fulfill() })
 
@@ -88,9 +104,7 @@ final class ScriptLauncherTests: XCTestCase {
         // The last pty read can land just after the exit callback.
         var sawOutput = false
         for _ in 0..<30 {
-            lock.lock()
-            sawOutput = String(decoding: received, as: UTF8.self).contains("hello")
-            lock.unlock()
+            sawOutput = String(decoding: received.snapshot(), as: UTF8.self).contains("hello")
             if sawOutput { break }
             usleep(100_000)
         }
