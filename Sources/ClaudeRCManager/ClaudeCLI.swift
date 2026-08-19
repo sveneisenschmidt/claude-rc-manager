@@ -124,6 +124,24 @@ final class ClaudeCLI: @unchecked Sendable {
         return path
     }
 
+    /// The cached auth verdict, or nil when nothing is cached or the cache
+    /// has expired. Never runs a subprocess, so it is safe on the main
+    /// thread — unlike `isLoggedIn()`, which can busy-poll for seconds.
+    var cachedLoggedIn: Bool? {
+        stateLock.lock(); defer { stateLock.unlock() }
+        guard let last = _lastAuth, Date().timeIntervalSince(last.at) < 60 else { return nil }
+        return last.loggedIn
+    }
+
+    /// Warms the auth cache off the main thread. Fire-and-forget: callers
+    /// that must not block (preflight, menu build) read `cachedLoggedIn`
+    /// and use this to make the *next* read accurate.
+    func refreshAuthInBackground() {
+        DispatchQueue.global().async { [self] in
+            _ = isLoggedIn()
+        }
+    }
+
     /// Cached for 60 s (spec: Login check). Call off the main thread.
     func isLoggedIn(force: Bool = false) -> Bool {
         if !force, let last = lastAuth, Date().timeIntervalSince(last.at) < 60 {

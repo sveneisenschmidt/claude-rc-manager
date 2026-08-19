@@ -110,3 +110,31 @@ final class ConfigStore {
         try data.write(to: fileURL, options: .atomic)
     }
 }
+
+/// How the on-disk config fared at launch, as the UI needs to say it.
+/// `.unreadable` is distinct from `.recoveredFromCorrupt`: the bad file
+/// could not even be moved aside, so save() refuses to overwrite it and
+/// every change is in-memory only.
+enum ConfigHealth {
+    case ok
+    case recoveredFromCorrupt
+    case unreadable
+}
+
+extension ConfigStore.LoadResult {
+    /// Derived, not hand-mapped at the call site, so a new case cannot
+    /// silently keep reporting a healthy config.
+    var health: ConfigHealth {
+        switch self {
+        case .loaded: return .ok
+        case .recoveredFromCorrupt: return .recoveredFromCorrupt
+        case .unreadable: return .unreadable
+        }
+    }
+
+    var config: AppConfig {
+        switch self {
+        case .loaded(let c), .recoveredFromCorrupt(let c), .unreadable(let c): return c
+        }
+    }
+}

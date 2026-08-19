@@ -1,14 +1,6 @@
 import AppKit
 
-/// How the on-disk config fared at launch. `.unreadable` is distinct from
-/// `.recoveredFromCorrupt`: the bad file could not even be moved aside, so
-/// ConfigStore refuses to save over it and every settings change is
-/// in-memory only — the menu has to say so.
-enum ConfigHealth {
-    case ok
-    case recoveredFromCorrupt
-    case unreadable
-}
+// ConfigHealth is declared next to ConfigStore, derived from its LoadResult.
 
 /// NSStatusItem + menu, rebuilt on every open via menuNeedsUpdate (spec:
 /// Menu structure). Icon updates on every state change, independent of the
@@ -27,6 +19,12 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private let configHealth: ConfigHealth
     private var cachedLoggedIn = false
     private var externalServers: [ExternalServer] = []
+    /// Menus can be opened faster than a scan completes; without this a
+    /// held-open menu would pile up concurrent pgrep/lsof sweeps.
+    private var isRefreshing = false
+    /// The save-refused alert is per session, not per change: after an
+    /// `.unreadable` load every single edit would otherwise raise it.
+    private var didWarnAboutSaveFailure = false
 
     init(config: AppConfig, configHealth: ConfigHealth, manager: ServerManager,
          cli: ClaudeCLI, store: ConfigStore)
@@ -54,21 +52,33 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         let healthy = cachedLoggedIn && cli.binaryPath != nil && configHealth == .ok
         let bucket = StatusIcon.bucket(states: manager.states, healthy: healthy)
         let image = NSImage(systemSymbolName: bucket.symbolName,
-                            accessibilityDescription: "Claude RC Manager")
+                            accessibilityDescription: bucket.accessibilityDescription)
         image?.isTemplate = true
         statusItem.button?.image = image
+        statusItem.button?.setAccessibilityLabel(bucket.accessibilityDescription)
+    }
+
+    /// Called from main.swift once the launch-time binary resolution
+    /// finishes. Uses the live config, not the one captured at launch: the
+    /// user can add or edit a folder while resolution is still running, and
+    /// re-sending the launch-time list would stop and drop that folder.
+    func applyResolvedPath(_ path: String?) {
+        manager.setFolders(config.folders, claudePath: path)
     }
 
     /// Refreshes auth + external scan off the main thread; the results
     /// update the icon immediately and feed the NEXT menu open (an open
     /// NSMenu is not rebuilt mid-display).
     func refreshAuthAndExternal() {
+        guard !isRefreshing else { return }
+        isRefreshing = true
         let ownPids = manager.ownPids()
         DispatchQueue.global().async { [weak self, cli] in
             _ = cli.resolveBinary()
             let loggedIn = cli.isLoggedIn()
             let external = ExternalServerScanner.scan(excluding: ownPids)
             DispatchQueue.main.async {
+                self?.isRefreshing = false
                 self?.cachedLoggedIn = loggedIn
                 self?.externalServers = external
                 self?.refreshIcon()
@@ -147,6 +157,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         let quit = NSMenuItem(title: "Quit Claude RC Manager",
                               action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
+    }
+
+    private static func canonicalPath(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
     }
 
     private func disabled(_ title: String) -> NSMenuItem {
@@ -264,7 +278,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let path = url.path
-        guard !config.folders.contains(where: { $0.path == path }) else {
+        // String comparison would miss the same folder reached through a
+        // symlink, a trailing slash, or /tmp vs /private/tmp — and two
+        // processes on one directory is exactly what this check exists for.
+        let canonical = Self.canonicalPath(path)
+        guard !config.folders.contains(where: { Self.canonicalPath($0.path) == canonical }) else {
             let alert = NSAlert()
             alert.messageText = "Folder already added"
             alert.informativeText = path
@@ -313,9 +331,15 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     /// all, and the user would otherwise lose every change at quit without
     /// ever being told.
     private func persist() {
+        // The manager is updated first, unconditionally: the modal alert
+        // below spins the run loop, and the running app must already agree
+        // with the in-memory config before the user is talking to a dialog.
+        manager.setFolders(config.folders, claudePath: cli.binaryPath)
         do {
             try store.save(config)
         } catch {
+            guard !didWarnAboutSaveFailure else { return }
+            didWarnAboutSaveFailure = true
             let alert = NSAlert()
             alert.messageText = "Could not save settings"
             alert.informativeText = configHealth == .unreadable
@@ -324,6 +348,5 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             NSApp.activate(ignoringOtherApps: true)
             alert.runModal()
         }
-        manager.setFolders(config.folders, claudePath: cli.binaryPath)
     }
 }

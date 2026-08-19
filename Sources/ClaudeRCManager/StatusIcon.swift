@@ -13,6 +13,16 @@ enum StatusIcon {
             case .neutral: return "terminal"
             }
         }
+
+        /// The three icons are shape-only; VoiceOver users get the state
+        /// from here, so it must not be the same string for all buckets.
+        var accessibilityDescription: String {
+            switch self {
+            case .warning: return "Claude RC Manager — warning"
+            case .active: return "Claude RC Manager — active"
+            case .neutral: return "Claude RC Manager — idle"
+            }
+        }
     }
 
     static func bucket(states: [ServerState], healthy: Bool) -> Bucket {
