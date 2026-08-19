@@ -46,6 +46,7 @@ final class ServerProcess {
     /// jump must not make a crash loop look like a stable run.
     private var startedAt: DispatchTime?
     private var restartTask: Task<Void, Never>?
+    private var readinessTask: Task<Void, Never>?
     private var userStopRequested = false
 
     var logURL: URL {
@@ -74,6 +75,13 @@ final class ServerProcess {
         // scheduled auto-restart starts out of exactly that state, as does a
         // manual start that cuts the backoff wait short.
         guard !state.isActive || state == .restarting else { return }
+        // Drop timers from the previous run: a pending backoff timer would
+        // fire a second launch, a stale readiness task would mark this run
+        // .running on the old run's schedule.
+        restartTask?.cancel()
+        restartTask = nil
+        readinessTask?.cancel()
+        readinessTask = nil
         if manual { policy.reset() }
         userStopRequested = false
         if let reason = preflight?() {
@@ -100,8 +108,9 @@ final class ServerProcess {
             server.onExit = { [weak self] status in
                 Task { @MainActor in self?.handleExit(status: status) }
             }
-            Task { @MainActor [weak self] in
+            readinessTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64((self?.readinessDelay ?? 5) * 1e9))
+                guard !Task.isCancelled else { return }
                 if self?.state == .starting { self?.state = .running }
             }
         } catch {
@@ -129,6 +138,9 @@ final class ServerProcess {
 
     private func handleExit(status: Int32) {
         server = nil
+        // This run is over: its readiness timer must not promote a later run.
+        readinessTask?.cancel()
+        readinessTask = nil
         let runDuration = startedAt.map {
             Double(DispatchTime.now().uptimeNanoseconds - $0.uptimeNanoseconds) / 1e9
         } ?? 0

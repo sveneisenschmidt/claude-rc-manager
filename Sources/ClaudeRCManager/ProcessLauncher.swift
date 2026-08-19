@@ -95,13 +95,20 @@ final class ScriptLauncher: ProcessLaunching {
                 if self.process.isRunning { self.process.terminate() }
             }
             queue.asyncAfter(deadline: .now() + gracePeriod) { [weak self] in
-                guard let self, self.process.isRunning else { return }
-                self.kill()
+                guard let self else { return }
+                // script exits as soon as its child detaches, so its liveness
+                // says nothing about the inner claude: escalate on the inner
+                // pid (kill 0 = existence probe), which a TERM-trapping child
+                // keeps alive past the grace period.
+                if let pid = self.innerPid, Darwin.kill(pid, 0) == 0 {
+                    killpg(pid, SIGKILL)
+                }
+                if self.process.isRunning { self.kill() }
             }
         }
 
         func kill() {
-            if let pid = innerPid, process.isRunning { killpg(pid, SIGKILL) }
+            if let pid = innerPid { killpg(pid, SIGKILL) }
             if process.isRunning {
                 // script is not a group leader; signal the pid directly.
                 Darwin.kill(process.processIdentifier, SIGKILL)
