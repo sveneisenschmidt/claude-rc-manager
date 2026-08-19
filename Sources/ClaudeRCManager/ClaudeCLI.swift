@@ -104,9 +104,29 @@ final class ClaudeCLI: @unchecked Sendable {
         return p.terminationStatus == 0 ? data : nil
     }
 
+    /// Install locations to try when the login shell finds nothing. A GUI
+    /// app's login shell reads .zprofile but not .zshrc — a PATH entry that
+    /// lives only in .zshrc (the common setup) is invisible here, so the
+    /// shell lookup alone reports "claude not found" for a working install.
+    static func knownLocations(home: String) -> [String] {
+        [
+            home + "/.local/bin/claude",
+            "/opt/homebrew/bin/claude",
+            "/usr/local/bin/claude",
+        ]
+    }
+
     @discardableResult
     func resolveBinary() -> String? {
         if let cached = binaryPath { return cached }
+        if let path = shellLookup() ?? knownLocationLookup() {
+            binaryPath = path
+            return path
+        }
+        return nil
+    }
+
+    private func shellLookup() -> String? {
         guard let data = ClaudeCLI.run(
             ["/bin/zsh", "-lc", "command -v claude"], timeout: 10),
             let text = String(data: data, encoding: .utf8)
@@ -120,8 +140,12 @@ final class ClaudeCLI: @unchecked Sendable {
         guard let path, path.hasPrefix("/"),
               FileManager.default.isExecutableFile(atPath: path)
         else { return nil }
-        binaryPath = path
         return path
+    }
+
+    private func knownLocationLookup() -> String? {
+        ClaudeCLI.knownLocations(home: NSHomeDirectory())
+            .first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
     /// The cached auth verdict, or nil when nothing is cached or the cache
