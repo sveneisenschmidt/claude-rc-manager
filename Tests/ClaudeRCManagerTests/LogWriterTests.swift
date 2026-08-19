@@ -40,6 +40,27 @@ final class LogWriterTests: XCTestCase {
         XCTAssertEqual(String(decoding: chunkedBytes, as: UTF8.self), "R\u{00D6}T\ndone")
     }
 
+    func testLongOSCAcrossChunksIsStripped() throws {
+        // A window-title OSC longer than 64 bytes must not leak when split.
+        let dir = try makeTempDir()
+        let title = "/Users/sven/Github/claude-rc-menubar - claude remote-control session"
+        let source = Data("\u{1B}]0;\(title)\u{07}AFTER".utf8)
+
+        let file = dir.appendingPathComponent("osc.log")
+        let writer = try LogWriter(url: file)
+        for byte in source { writer.append(Data([byte])) }
+        writer.close()
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "AFTER")
+    }
+
+    func testSafeSplitOnSlicedData() {
+        // pending has a non-zero startIndex after removeFirst; safeSplit
+        // must return an offset that is valid for sliced Data.
+        var data = Data("xxabc\u{1B}".utf8)
+        data.removeFirst(2)
+        XCTAssertEqual(LogWriter.safeSplit(data), 3) // "abc", ESC held back
+    }
+
     func testInitOnExistingFileAppends() throws {
         let dir = try makeTempDir()
         let file = dir.appendingPathComponent("x.log")

@@ -7,8 +7,11 @@ import Foundation
 /// Reads arrive in arbitrary chunks, so an escape sequence or a multi-byte
 /// UTF-8 codepoint can straddle two `append` calls. Only the prefix that
 /// ends on a safe boundary is written; the rest is carried over in `pending`.
+/// Thread-safe: `append` arrives on the pty pump's background queue while
+/// `close` runs from the main actor, so all mutable state sits behind a lock.
 final class LogWriter {
     private let handle: FileHandle
+    private let lock = NSLock()
     private var pending = Data()
     private var closed = false
     let url: URL
@@ -32,16 +35,18 @@ final class LogWriter {
     }
 
     /// Length of the largest prefix of `data` that ends on a UTF-8 boundary
-    /// and outside an escape sequence.
+    /// and outside an escape sequence. Returns an OFFSET, not an index:
+    /// callers pass sliced Data (`pending` after removeFirst has a non-zero
+    /// startIndex), so all subscripts below go through `startIndex + i`.
     static func safeSplit(_ data: Data) -> Int {
         var end = data.count
-        // Back off an incomplete trailing escape sequence (bounded scan).
+        // Back off an incomplete trailing escape sequence. Unbounded scan:
+        // a long OSC (window title) easily exceeds 64 bytes, and the
+        // maxCarryOver force-flush already bounds total held-back bytes.
         var i = data.count - 1
-        var scanned = 0
-        while i >= 0, scanned < 64 {
+        while i >= 0 {
             if data[data.startIndex + i] == 0x1B { end = min(end, i); break }
             i -= 1
-            scanned += 1
         }
         // Back off an incomplete trailing UTF-8 codepoint.
         var j = end - 1
@@ -77,6 +82,7 @@ final class LogWriter {
     }
 
     func append(_ chunk: Data) {
+        lock.lock(); defer { lock.unlock() }
         guard !closed else { return }
         pending.append(chunk)
         var split = LogWriter.safeSplit(pending)
@@ -89,6 +95,7 @@ final class LogWriter {
 
     /// Flushes whatever is still held back and closes the handle. Idempotent.
     func close() {
+        lock.lock(); defer { lock.unlock() }
         guard !closed else { return }
         closed = true
         if !pending.isEmpty {
