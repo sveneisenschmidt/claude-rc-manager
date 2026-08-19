@@ -252,8 +252,9 @@ not logged in, the menu shows the warning row with "Open login in
 Terminal…", which opens Terminal.app running `claude auth login`
 (interactive browser OAuth cannot be done headless). Server starts are
 blocked while logged out. Autostart folders skipped at launch because of a
-failed login check stay stopped; they are not auto-started when login later
-succeeds (the user starts them manually).
+failed login check show `failed (not logged in)` (the Start-preconditions
+rule); they are not auto-started when login later succeeds (the user starts
+them manually).
 
 ### Autostart and quit
 

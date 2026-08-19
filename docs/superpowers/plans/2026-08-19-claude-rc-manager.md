@@ -44,7 +44,10 @@ Tests/ClaudeRCManagerTests/
   AuthStatusTests.swift
   LogWriterTests.swift
   BackoffTests.swift
+  ScriptLauncherTests.swift
   ServerProcessTests.swift
+  ServerManagerTests.swift
+  ClaudeCLITests.swift
   ExternalServerScannerTests.swift
   StatusIconTests.swift
 Makefile
@@ -103,8 +106,9 @@ let package = Package(
 ```swift
 import AppKit
 
-// Wiring grows in later tasks; this must stay last in the file family:
-// top-level code is only allowed in main.swift.
+// Wiring grows in later tasks; top-level code is only allowed in main.swift.
+// swift test works with this file present: XCTest loads the module without
+// executing main (verified by compile probe).
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 app.run()
@@ -127,21 +131,7 @@ final class FolderConfigTests: XCTestCase {
 - [ ] **Step 5: Build and test**
 
 Run: `swift build && swift test`
-Expected: build succeeds, 1 test passes. (`swift test` on an executable target works because the test target declares the dependency; top-level `app.run()` is not executed by tests since XCTest loads the module without running `main`.)
-
-**Note:** if `swift test` hangs or fails because main.swift's top-level code runs, guard it:
-
-```swift
-import AppKit
-
-if NSClassFromString("XCTestCase") == nil {
-    let app = NSApplication.shared
-    app.setActivationPolicy(.accessory)
-    app.run()
-}
-```
-
-Use the guarded form from the start.
+Expected: build succeeds, 1 test passes.
 
 - [ ] **Step 6: Commit**
 
@@ -511,6 +501,22 @@ final class CommandBuilderTests: XCTestCase {
         ])
     }
 
+    func testWorktreeModeWithQuotedExtraArgs() {
+        var f = FolderConfig(path: "/tmp/proj")
+        f.spawnMode = .worktree
+        f.extraArgs = #"--debug-file "/tmp/my logs/rc.log""#
+        let argv = CommandBuilder.argv(for: f, claudePath: "/x/claude")
+        XCTAssertEqual(argv, [
+            "/usr/bin/script", "-q", "/dev/null",
+            "/x/claude", "remote-control",
+            "--name", "proj",
+            "--spawn", "worktree",
+            "--capacity", "32",
+            "--no-create-session-in-dir",
+            "--debug-file", "/tmp/my logs/rc.log",
+        ])
+    }
+
     func testSessionModeOmitsCapacityAndKeepsFlags() {
         var f = FolderConfig(path: "/tmp/proj")
         f.spawnMode = .session
@@ -572,7 +578,7 @@ enum CommandBuilder {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `swift test --filter CommandBuilderTests`
-Expected: PASS (2 tests)
+Expected: PASS (3 tests)
 
 - [ ] **Step 5: Commit**
 
@@ -907,6 +913,7 @@ git commit -m "Add restart policy with backoff and crash-loop pause"
 
 **Files:**
 - Create: `Sources/ClaudeRCManager/ProcessLauncher.swift`
+- Create: `Tests/ClaudeRCManagerTests/ScriptLauncherTests.swift`
 
 The real launcher is exercised by `ServerProcessTests` (Task 10) through the
 protocol and by one direct integration test here.
@@ -922,6 +929,9 @@ import Foundation
 protocol RunningServer: AnyObject {
     /// pid of the inner claude process (script's child), once resolved.
     var innerPid: pid_t? { get }
+    /// All pids of this server's tree (script + inner child), for the
+    /// external-scan exclusion.
+    var pids: [pid_t] { get }
     /// Called once when the process tree exits, with script's status.
     var onExit: ((Int32) -> Void)? { get set }
     /// Called with raw output chunks (pty stream).
@@ -943,23 +953,45 @@ protocol ProcessLaunching {
 final class ScriptLauncher: ProcessLaunching {
     final class Server: RunningServer {
         let process = Process()
-        private(set) var innerPid: pid_t?
         var onExit: ((Int32) -> Void)?
         var onOutput: ((Data) -> Void)?
         private let queue = DispatchQueue(label: "server-process")
+        private let lock = NSLock()
+        private var _innerPid: pid_t?
+
+        var innerPid: pid_t? {
+            lock.lock(); defer { lock.unlock() }
+            return _innerPid
+        }
+
+        var pids: [pid_t] {
+            var result = [process.processIdentifier]
+            if let inner = innerPid { result.append(inner) }
+            return result
+        }
+
+        private func setInnerPid(_ pid: pid_t) {
+            lock.lock(); _innerPid = pid; lock.unlock()
+        }
+
+        /// Blocking retry on `queue`; also used by stop() so a stop right
+        /// after launch still finds the inner pid before signaling.
+        private func resolveInnerPidBlocking() -> pid_t? {
+            if let pid = innerPid { return pid }
+            let scriptPid = process.processIdentifier
+            for _ in 0..<20 {
+                if let pid = Self.childPid(of: scriptPid) {
+                    setInnerPid(pid)
+                    return pid
+                }
+                if !process.isRunning { return nil }
+                usleep(100_000)
+            }
+            return nil
+        }
 
         fileprivate func resolveInnerPid() {
-            // The inner child appears just after spawn; retry briefly.
-            let scriptPid = process.processIdentifier
-            queue.async { [weak self] in
-                for _ in 0..<20 {
-                    if let pid = Self.childPid(of: scriptPid) {
-                        self?.innerPid = pid
-                        return
-                    }
-                    usleep(100_000)
-                }
-            }
+            queue.async { [weak self] in _ = self?.resolveInnerPidBlocking() }
         }
 
         static func childPid(of parent: pid_t) -> pid_t? {
@@ -977,19 +1009,24 @@ final class ScriptLauncher: ProcessLaunching {
         }
 
         func stop(gracePeriod: TimeInterval) {
-            let target = innerPid
-            if let pid = target {
-                // Inner pid is its own group leader (login_tty session).
-                killpg(pid, SIGTERM)
+            queue.async { [weak self] in
+                guard let self else { return }
+                // Wait for the inner pid if it has not resolved yet —
+                // signaling only script would orphan the inner claude.
+                if let pid = self.resolveInnerPidBlocking() {
+                    // Inner pid is its own group leader (login_tty session).
+                    killpg(pid, SIGTERM)
+                }
+                if self.process.isRunning { self.process.terminate() }
             }
-            process.terminate() // SIGTERM to script itself
             queue.asyncAfter(deadline: .now() + gracePeriod) { [weak self] in
-                self?.kill()
+                guard let self, self.process.isRunning else { return }
+                self.kill()
             }
         }
 
         func kill() {
-            if let pid = innerPid { killpg(pid, SIGKILL) }
+            if let pid = innerPid, process.isRunning { killpg(pid, SIGKILL) }
             if process.isRunning {
                 // script is not a group leader; signal the pid directly.
                 Darwin.kill(process.processIdentifier, SIGKILL)
@@ -1025,7 +1062,7 @@ final class ScriptLauncher: ProcessLaunching {
 
 - [ ] **Step 2: Add an integration test against a real process**
 
-Append to a new file `Tests/ClaudeRCManagerTests/ScriptLauncherTests.swift`:
+Create `Tests/ClaudeRCManagerTests/ScriptLauncherTests.swift`:
 
 ```swift
 import XCTest
@@ -1051,8 +1088,10 @@ final class ScriptLauncherTests: XCTestCase {
 
         server.stop(gracePeriod: 2)
         wait(for: [exited], timeout: 5)
-        // The inner sleep must be gone too.
-        XCTAssertNil(ScriptLauncher.Server.childPid(of: inner!))
+        // The inner sleep itself must be gone (kill 0 = existence probe).
+        usleep(200_000)
+        XCTAssertEqual(Darwin.kill(inner!, 0), -1)
+        XCTAssertEqual(errno, ESRCH)
     }
 }
 ```
@@ -1085,6 +1124,7 @@ import XCTest
 
 final class FakeServer: RunningServer {
     var innerPid: pid_t? = 4242
+    var pids: [pid_t] { [111, 4242] } // 111 stands in for the script pid
     var onExit: ((Int32) -> Void)?
     var onOutput: ((Data) -> Void)?
     var stopped = false
@@ -1120,8 +1160,15 @@ final class ServerProcessTests: XCTestCase {
             folder: f, launcher: launcher,
             logDirectory: URL(fileURLWithPath: NSTemporaryDirectory()),
             claudePath: "/bin/echo",
-            readinessDelay: 0.05)
+            readinessDelay: 0.05,
+            backoffScale: 0.01)
         return (sp, launcher)
+    }
+
+    /// onExit hops onto the main actor via an enqueued Task; yield so the
+    /// queued task runs before asserting.
+    func drainMainQueue() async throws {
+        try await Task.sleep(nanoseconds: 20_000_000)
     }
 
     func testStartReachesRunningAfterReadinessDelay() async throws {
@@ -1140,6 +1187,7 @@ final class ServerProcessTests: XCTestCase {
         sp.stop()
         XCTAssertEqual(sp.state, .stopping)
         launcher.servers[0].exitNow(0)
+        try await drainMainQueue()
         XCTAssertEqual(sp.state, .stopped)
         XCTAssertEqual(launcher.launchCount, 1)
     }
@@ -1149,7 +1197,37 @@ final class ServerProcessTests: XCTestCase {
         sp.start(manual: true)
         try await Task.sleep(nanoseconds: 100_000_000)
         launcher.servers[0].exitNow(1)
+        try await drainMainQueue()
         XCTAssertEqual(sp.state, .restarting)
+    }
+
+    func testStopDuringRestartingCancelsTimerAndStops() async throws {
+        let (sp, launcher) = makeSUT()
+        sp.start(manual: true)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        launcher.servers[0].exitNow(1)
+        try await drainMainQueue()
+        XCTAssertEqual(sp.state, .restarting)
+        sp.stop()
+        XCTAssertEqual(sp.state, .stopped)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(launcher.launchCount, 1) // no restart fired
+    }
+
+    func testCrashLoopPauseThenManualStartClears() async throws {
+        let (sp, launcher) = makeSUT()
+        sp.start(manual: true)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        launcher.servers[0].exitNow(1) // fast exit 1 -> backoff restart
+        try await Task.sleep(nanoseconds: 100_000_000)
+        launcher.servers[1].exitNow(1) // fast exit 2 -> backoff restart
+        try await Task.sleep(nanoseconds: 100_000_000)
+        launcher.servers[2].exitNow(1) // fast exit 3 -> pause
+        try await drainMainQueue()
+        XCTAssertEqual(sp.state, .failed("crash loop — check log"))
+        sp.start(manual: true)
+        XCTAssertEqual(sp.state, .starting)
+        XCTAssertEqual(launcher.launchCount, 4)
     }
 
     func testSessionModeExitZeroIsEnded() async throws {
@@ -1157,6 +1235,7 @@ final class ServerProcessTests: XCTestCase {
         sp.start(manual: true)
         try await Task.sleep(nanoseconds: 100_000_000)
         launcher.servers[0].exitNow(0)
+        try await drainMainQueue()
         XCTAssertEqual(sp.state, .ended)
         XCTAssertEqual(launcher.launchCount, 1)
     }
@@ -1166,7 +1245,19 @@ final class ServerProcessTests: XCTestCase {
         sp.start(manual: true)
         try await Task.sleep(nanoseconds: 100_000_000)
         launcher.servers[0].exitNow(3)
-        XCTAssertEqual(sp.state, .failed("exited (status 3)"))
+        try await drainMainQueue()
+        XCTAssertEqual(sp.state, .failed("exited, status 3"))
+    }
+
+    func testPreflightFailureBlocksRestart() async throws {
+        let (sp, launcher) = makeSUT()
+        sp.start(manual: true)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        sp.preflight = { "not logged in" }
+        launcher.servers[0].exitNow(1)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(sp.state, .failed("not logged in"))
+        XCTAssertEqual(launcher.launchCount, 1)
     }
 
     func testLaunchErrorIsFailed() {
@@ -1200,6 +1291,14 @@ enum ServerState: Equatable {
         default: return false
         }
     }
+
+    /// States a (bulk) start may act on.
+    var canStart: Bool {
+        switch self {
+        case .stopped, .ended, .failed: return true
+        default: return false
+        }
+    }
 }
 
 /// State machine for one folder's server (spec: States, Crash handling).
@@ -1216,7 +1315,11 @@ final class ServerProcess {
     private let logDirectory: URL
     /// Settable: the real path resolves asynchronously after app launch.
     var claudePath: String
+    /// Re-checked before every start, including auto-restarts (spec: Start
+    /// preconditions). Returns a failure reason or nil. Set by ServerManager.
+    var preflight: (() -> String?)?
     private let readinessDelay: TimeInterval
+    private let backoffScale: Double
     private var server: RunningServer?
     private var logWriter: LogWriter?
     private var policy = RestartPolicy()
@@ -1229,13 +1332,15 @@ final class ServerProcess {
     }
 
     init(folder: FolderConfig, launcher: ProcessLaunching, logDirectory: URL,
-         claudePath: String, readinessDelay: TimeInterval = 5)
+         claudePath: String, readinessDelay: TimeInterval = 5,
+         backoffScale: Double = 1)
     {
         self.folder = folder
         self.launcher = launcher
         self.logDirectory = logDirectory
         self.claudePath = claudePath
         self.readinessDelay = readinessDelay
+        self.backoffScale = backoffScale
     }
 
     func update(folder: FolderConfig) {
@@ -1247,6 +1352,10 @@ final class ServerProcess {
         guard !state.isActive else { return }
         if manual { policy.reset() }
         userStopRequested = false
+        if let reason = preflight?() {
+            state = .failed(reason) // precondition failures skip policy accounting
+            return
+        }
         guard FileManager.default.fileExists(atPath: folder.path) else {
             state = .failed("folder missing")
             return
@@ -1303,7 +1412,7 @@ final class ServerProcess {
             return
         }
         guard folder.autoRestart else {
-            state = .failed("exited (status \(status))")
+            state = .failed("exited, status \(status)")
             return
         }
         switch policy.recordExit(runDuration: runDuration) {
@@ -1311,12 +1420,22 @@ final class ServerProcess {
             state = .failed("crash loop — check log")
         case .restart(let delay):
             state = .restarting
+            let scaled = delay * backoffScale
             restartTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: UInt64(delay * 1e9))
+                try? await Task.sleep(nanoseconds: UInt64(scaled * 1e9))
                 guard let self, self.state == .restarting else { return }
                 self.start(manual: false)
             }
         }
+    }
+
+    // Used by ServerManager and the external-scan exclusion.
+    var pids: [pid_t] { server?.pids ?? [] }
+    var innerPid: pid_t? { server?.innerPid }
+
+    func setPreconditionFailure(_ reason: String) {
+        guard !state.isActive else { return }
+        state = .failed(reason)
     }
 }
 ```
@@ -1324,7 +1443,7 @@ final class ServerProcess {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `swift test --filter ServerProcessTests`
-Expected: PASS (6 tests)
+Expected: PASS (9 tests)
 
 - [ ] **Step 5: Run the whole suite**
 
@@ -1551,7 +1670,8 @@ enum ExternalServerScanner {
     /// Blocking; call off the main thread (menu opens trigger it).
     static func scan(excluding ownPids: Set<pid_t>) -> [ExternalServer] {
         guard let data = ClaudeCLI.run(
-            ["/usr/bin/pgrep", "-fl", "remote-control"], timeout: 5),
+            ["/usr/bin/pgrep", "-U", String(getuid()), "-fl", "remote-control"],
+            timeout: 5),
             let text = String(data: data, encoding: .utf8)
         else { return [] }
         return parsePgrep(text, excluding: ownPids).map { server in
@@ -1718,10 +1838,10 @@ final class ServerManagerTests: XCTestCase {
         XCTAssertTrue(launcher.servers[0].stopped)
     }
 
-    func testOwnPidsListsInnerPids() {
+    func testOwnPidsListsScriptAndInnerPids() {
         let (mgr, _) = makeSUT()
         mgr.autostart(claudePath: "/bin/echo", loggedIn: true)
-        XCTAssertEqual(mgr.ownPids(), [4242]) // FakeServer.innerPid
+        XCTAssertEqual(mgr.ownPids(), [111, 4242]) // FakeServer.pids
     }
 }
 ```
@@ -1749,6 +1869,9 @@ final class ServerManager {
     private let launcher: ProcessLaunching
     private let logDirectory: URL
     private let readinessDelay: TimeInterval
+    /// Re-checked before every start, auto-restarts included; wired to
+    /// ClaudeCLI in main.swift. Returns a failure reason or nil.
+    var preflight: (() -> String?)?
 
     init(config: AppConfig, launcher: ProcessLaunching, logDirectory: URL,
          readinessDelay: TimeInterval = 5)
@@ -1771,6 +1894,7 @@ final class ServerManager {
                 folder: folder, launcher: launcher, logDirectory: logDirectory,
                 claudePath: claudePath ?? "claude", readinessDelay: readinessDelay)
             p.onStateChange = { [weak self] _ in self?.onAnyStateChange?() }
+            p.preflight = { [weak self] in self?.preflight?() }
             return p
         }
         // Removed folders: stop their servers.
@@ -1800,7 +1924,7 @@ final class ServerManager {
     }
 
     func startAll(claudePath: String?, loggedIn: Bool) {
-        for p in processes where !p.state.isActive {
+        for p in processes where p.state.canStart {
             start(p, claudePath: claudePath, loggedIn: loggedIn, manual: true)
         }
     }
@@ -1809,9 +1933,10 @@ final class ServerManager {
         processes.forEach { $0.stop() }
     }
 
-    /// Inner pids of managed servers, for the external-scan exclusion.
+    /// Script + inner pids of managed servers, for the external-scan
+    /// exclusion (the script command line matches the scan pattern too).
     func ownPids() -> Set<pid_t> {
-        Set(processes.compactMap { $0.innerPid })
+        Set(processes.flatMap { $0.pids })
     }
 
     var states: [ServerState] { processes.map(\.state) }
@@ -1823,24 +1948,8 @@ final class ServerManager {
 }
 ```
 
-Add to `ServerProcess.swift` (same commit):
-
-```swift
-extension ServerProcess {
-    var innerPid: pid_t? { server?.innerPid }
-
-    func setPreconditionFailure(_ reason: String) {
-        guard !state.isActive else { return }
-        state = .failed(reason)
-    }
-}
-```
-
-For that extension to compile, change `private var server` and
-`private(set) var state` accordingly: `server` stays private — add the
-extension content directly into the class instead if visibility blocks it.
-(Concretely: implement `innerPid` and `setPreconditionFailure` as members of
-the class body, not an extension, and skip the extension.)
+(`ServerProcess.pids`, `innerPid`, and `setPreconditionFailure` already exist
+from Task 10.)
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -1945,9 +2054,8 @@ struct FolderSettingsView: View {
                 ForEach(SpawnMode.allCases, id: \.self) { Text($0.rawValue) }
             }
             Toggle("Pre-create session in directory", isOn: $folder.createSessionInDir)
-            if folder.spawnMode != .session {
-                Stepper("Capacity: \(folder.capacity)", value: $folder.capacity, in: 1...128)
-            }
+            Stepper("Capacity: \(folder.capacity)", value: $folder.capacity, in: 1...128)
+                .disabled(folder.spawnMode == .session) // spec: disabled, not hidden
             Picker("Permission mode", selection: $folder.permissionMode) {
                 Text("CLI default").tag(PermissionMode?.none)
                 ForEach(PermissionMode.allCases, id: \.self) {
@@ -2069,6 +2177,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         refreshIcon()
     }
 
+    /// Called from main.swift once the launch-time resolution finishes, so
+    /// the first menu open does not show stale "not logged in" state.
+    func setLoggedIn(_ loggedIn: Bool) {
+        cachedLoggedIn = loggedIn
+        refreshIcon()
+    }
+
     func refreshIcon() {
         let healthy = cachedLoggedIn && cli.binaryPath != nil && !configWasCorrupt
         let bucket = StatusIcon.bucket(states: manager.states, healthy: healthy)
@@ -2078,10 +2193,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         statusItem.button?.image = image
     }
 
+    /// Refreshes auth + external scan off the main thread; the results
+    /// update the icon immediately and feed the NEXT menu open (an open
+    /// NSMenu is not rebuilt mid-display).
     func refreshAuthAndExternal() {
         let ownPids = manager.ownPids()
-        DispatchQueue.global().async { [weak self] in
-            let loggedIn = self?.cli.isLoggedIn() ?? false
+        DispatchQueue.global().async { [weak self, cli] in
+            _ = cli.resolveBinary()
+            let loggedIn = cli.isLoggedIn()
             let external = ExternalServerScanner.scan(excluding: ownPids)
             DispatchQueue.main.async {
                 self?.cachedLoggedIn = loggedIn
@@ -2097,7 +2216,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         refreshAuthAndExternal()
         menu.removeAllItems()
 
-        if cli.binaryPath == nil && cli.resolveBinary() == nil {
+        // Cached values only — no blocking CLI calls on the main thread.
+        if cli.binaryPath == nil {
             menu.addItem(disabled("⚠️ claude CLI not found — install Claude Code"))
             menu.addItem(.separator())
         } else if !cachedLoggedIn {
@@ -2164,13 +2284,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     private func statusLabel(_ state: ServerState) -> String {
         switch state {
-        case .stopped: return "stopped"
-        case .starting: return "starting"
+        case .stopped: return "○ stopped"
+        case .starting: return "◐ starting"
         case .running: return "● running"
-        case .stopping: return "stopping"
-        case .restarting: return "restarting…"
-        case .ended: return "ended"
-        case .failed(let reason): return "failed (\(reason))"
+        case .stopping: return "◐ stopping"
+        case .restarting: return "◐ restarting…"
+        case .ended: return "○ ended"
+        case .failed(let reason): return "✕ failed (\(reason))"
         }
     }
 
@@ -2218,9 +2338,15 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         if process.state.isActive {
             process.stop()
         } else {
-            let path = cli.resolveBinary()
-            let loggedIn = cli.isLoggedIn()
-            manager.start(id: id, claudePath: path, loggedIn: loggedIn)
+            // Resolve + auth off the main thread, then start on main.
+            DispatchQueue.global().async { [weak self, cli] in
+                let path = cli.resolveBinary()
+                let loggedIn = cli.isLoggedIn()
+                DispatchQueue.main.async {
+                    self?.cachedLoggedIn = loggedIn
+                    self?.manager.start(id: id, claudePath: path, loggedIn: loggedIn)
+                }
+            }
         }
     }
 
@@ -2277,9 +2403,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func startAllAction() {
-        let path = cli.resolveBinary()
-        let loggedIn = cli.isLoggedIn()
-        manager.startAll(claudePath: path, loggedIn: loggedIn)
+        DispatchQueue.global().async { [weak self, cli] in
+            let path = cli.resolveBinary()
+            let loggedIn = cli.isLoggedIn()
+            DispatchQueue.main.async {
+                self?.cachedLoggedIn = loggedIn
+                self?.manager.startAll(claudePath: path, loggedIn: loggedIn)
+            }
+        }
     }
 
     @objc private func stopAllAction() { manager.stopAll() }
@@ -2313,7 +2444,9 @@ Replace `Sources/ClaudeRCManager/main.swift`:
 ```swift
 import AppKit
 
-@MainActor
+// NOT @MainActor on the class: top-level code in main.swift is nonisolated,
+// so a @MainActor init would not compile (verified by probe). The
+// NSApplicationDelegate callbacks are main-actor anyway.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var menuController: StatusMenuController?
     var manager: ServerManager?
@@ -2343,6 +2476,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let manager = ServerManager(
             config: config, launcher: ScriptLauncher(), logDirectory: logDir)
         self.manager = manager
+        // Preflight re-checks preconditions on every start, restarts
+        // included. isLoggedIn() is cached for 60 s.
+        manager.preflight = { [cli] in
+            guard cli.binaryPath != nil else { return "claude not found" }
+            return cli.isLoggedIn() ? nil : "not logged in"
+        }
         menuController = StatusMenuController(
             config: config, configWasCorrupt: wasCorrupt,
             manager: manager, cli: cli, store: store)
@@ -2351,9 +2490,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let path = cli.resolveBinary()
             let loggedIn = cli.isLoggedIn()
             DispatchQueue.main.async { [weak self] in
+                self?.menuController?.setLoggedIn(loggedIn)
                 self?.manager?.setFolders(config.folders, claudePath: path)
                 self?.manager?.autostart(claudePath: path, loggedIn: loggedIn)
-                self?.menuController?.refreshIcon()
             }
         }
     }
