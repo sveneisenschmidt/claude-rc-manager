@@ -1,4 +1,5 @@
 import AppKit
+import CoreServices
 
 // NOT @MainActor on the class: top-level code in main.swift is nonisolated,
 // so a @MainActor init would not compile (verified by test compile). The
@@ -78,8 +79,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// error. Main-thread only, like both writers.
     private var didReplyToTerminate = false
 
+    /// True when macOS is quitting the app as part of a logout, restart or
+    /// shutdown. Cancelling there would cancel the user's logout, and the
+    /// sessions end with the login session either way, so those never ask.
+    ///
+    /// Read from the event that triggered the quit rather than from
+    /// NSWorkspace.willPowerOffNotification: that notification is delivered
+    /// through the main queue and can arrive after this method has run.
+    private var isSystemInitiatedQuit: Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent,
+              event.eventClass == AEEventClass(kCoreEventClass),
+              event.eventID == AEEventID(kAEQuitApplication),
+              let reason = event.attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason))
+        else { return false }
+        switch reason.enumCodeValue {
+        case UInt32(kAELogOut), UInt32(kAEReallyLogOut),
+             UInt32(kAEShowRestartDialog), UInt32(kAERestart),
+             UInt32(kAEShowShutdownDialog), UInt32(kAEShutDown):
+            return true
+        default:
+            return false
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let manager, manager.anyActive else { return .terminateNow }
+        // Nothing has been signalled yet, so cancelling here is complete.
+        if !isSystemInitiatedQuit,
+           !SessionAlert.confirm(scope: .quit, entries: manager.activeSessionEntries)
+        {
+            return .terminateCancel
+        }
         manager.stopAll()
 
         func reply() {
