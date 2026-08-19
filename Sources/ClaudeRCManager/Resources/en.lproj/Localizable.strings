@@ -83,7 +83,6 @@
 "alert.sessions.stop.title.one" = "Stop with 1 active session?";
 "alert.sessions.stop.title.other" = "Stop with %d active sessions?";
 "alert.sessions.body.list" = "Affected: %@. Running sessions end immediately.";
-"alert.sessions.body" = "Running sessions end immediately.";
 "alert.sessions.confirm.quit" = "Quit Anyway";
 "alert.sessions.confirm.stop" = "Stop Anyway";
 "alert.sessions.cancel" = "Cancel";

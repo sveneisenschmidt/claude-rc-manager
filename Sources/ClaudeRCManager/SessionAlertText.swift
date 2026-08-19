@@ -28,10 +28,8 @@ enum SessionAlertText {
         counted(scope.titleKey, count)
     }
 
-    /// With entries the body names the folders; without them the folder is
-    /// already known from where the action was invoked.
+    /// Names every affected folder with its own count.
     static func body(entries: [SessionEntry]) -> String {
-        guard !entries.isEmpty else { return L10n.t("alert.sessions.body") }
         let list = entries.map { "\($0.name) (\($0.count))" }.joined(separator: ", ")
         return L10n.t("alert.sessions.body.list", list)
     }
@@ -39,8 +37,8 @@ enum SessionAlertText {
     /// Title of the destructive button.
     static func confirmButton(scope: Scope) -> String { L10n.t(scope.confirmKey) }
 
-    /// Sessions an action would end. One or more of them is what makes the
-    /// warning appear at all, so this is where that threshold is decided.
+    /// Sessions an action would end. SessionAlert asks whenever this is one
+    /// or more.
     static func total(of entries: [SessionEntry]) -> Int {
         entries.reduce(0) { $0 + $1.count }
     }

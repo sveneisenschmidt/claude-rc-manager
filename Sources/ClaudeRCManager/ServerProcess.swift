@@ -23,8 +23,9 @@ enum ServerState: Equatable {
 /// State machine for one folder's server (spec: States, Crash handling).
 /// Main-thread confined: the exit callback hops to the main actor before it
 /// touches anything here. The output callback deliberately does NOT — it runs
-/// on the pty reader thread and writes straight to its LogWriter, which is
-/// internally locked, so no state of this class is read off the main actor.
+/// on the pty reader thread and hands the bytes to its LogWriter and its
+/// SessionCounter, both internally locked, so no state of this class is read
+/// off the main actor.
 @MainActor
 final class ServerProcess {
     private(set) var folder: FolderConfig
@@ -233,9 +234,8 @@ final class ServerProcess {
     /// Sessions this server is running, for the menu row and the warning
     /// shown before a stop.
     ///
-    /// `.stopping` reports none: that stop was already confirmed, and the
-    /// sessions are being torn down, so a quit during the grace period must
-    /// not ask about them a second time.
+    /// `.stopping` reports none: the server is already on its way down, so
+    /// asking about its sessions again can no longer save them.
     var activeSessions: Int {
         // The run's own snapshot, the same rule handleExit follows: a settings
         // edit mid-run must not change how this run is counted. No snapshot

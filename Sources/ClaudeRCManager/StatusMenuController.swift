@@ -249,9 +249,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         guard let id = sender.representedObject as? UUID,
               let process = manager.process(id: id) else { return }
         if process.state.isActive {
-            guard SessionAlert.confirm(scope: .stop,
-                                       entries: ServerManager.sessionEntries(of: [process]),
-                                       enumerate: false) else { return }
+            guard SessionAlert.confirm(
+                scope: .stop,
+                entries: ServerManager.sessionEntries(of: [process])) else { return }
             process.stop()
         } else {
             // Resolve + auth off the main thread, then start on main.

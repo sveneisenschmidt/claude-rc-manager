@@ -84,7 +84,6 @@
 "alert.sessions.stop.title.one" = "Mit 1 aktiven Sitzung stoppen?";
 "alert.sessions.stop.title.other" = "Mit %d aktiven Sitzungen stoppen?";
 "alert.sessions.body.list" = "Betroffen: %@. Laufende Sitzungen enden sofort.";
-"alert.sessions.body" = "Laufende Sitzungen enden sofort.";
 "alert.sessions.confirm.quit" = "Trotzdem beenden";
 "alert.sessions.confirm.stop" = "Trotzdem stoppen";
 "alert.sessions.cancel" = "Abbrechen";

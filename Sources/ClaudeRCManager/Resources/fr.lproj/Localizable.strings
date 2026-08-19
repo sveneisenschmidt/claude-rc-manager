@@ -84,7 +84,6 @@
 "alert.sessions.stop.title.one" = "Arrêter avec 1 session active ?";
 "alert.sessions.stop.title.other" = "Arrêter avec %d sessions actives ?";
 "alert.sessions.body.list" = "Dossiers concernés : %@. Les sessions en cours se terminent immédiatement.";
-"alert.sessions.body" = "Les sessions en cours se terminent immédiatement.";
 "alert.sessions.confirm.quit" = "Quitter quand même";
 "alert.sessions.confirm.stop" = "Arrêter quand même";
 "alert.sessions.cancel" = "Annuler";

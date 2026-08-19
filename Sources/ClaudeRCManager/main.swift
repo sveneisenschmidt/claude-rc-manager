@@ -95,11 +95,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return AppDelegate.isSystemQuitReason(reason.enumCodeValue)
     }
 
-    /// The six reasons macOS gives for quitting an app on its own. Split out
-    /// as a pure function because the event side cannot be driven from a
-    /// test, and a wrong verdict here is the one that hurts: it would put a
-    /// modal in front of a logout. An unrecognized reason asks, which is the
-    /// harmless direction.
+    /// The six reasons macOS gives for quitting an app on its own. Split
+    /// out as a pure function because the event side cannot be driven from a
+    /// test, and both wrong answers cost something: a wrong `true` ends
+    /// sessions without asking, a wrong `false` puts a modal in front of a
+    /// logout. An unrecognized reason asks, so an unknown future reason
+    /// blocks a quit rather than losing work.
     static func isSystemQuitReason(_ code: OSType) -> Bool {
         switch code {
         case OSType(kAELogOut), OSType(kAEReallyLogOut),

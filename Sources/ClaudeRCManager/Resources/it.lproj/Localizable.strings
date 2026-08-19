@@ -84,7 +84,6 @@
 "alert.sessions.stop.title.one" = "Arrestare con 1 sessione attiva?";
 "alert.sessions.stop.title.other" = "Arrestare con %d sessioni attive?";
 "alert.sessions.body.list" = "Cartelle interessate: %@. Le sessioni in corso terminano subito.";
-"alert.sessions.body" = "Le sessioni in corso terminano subito.";
 "alert.sessions.confirm.quit" = "Esci comunque";
 "alert.sessions.confirm.stop" = "Arresta comunque";
 "alert.sessions.cancel" = "Annulla";

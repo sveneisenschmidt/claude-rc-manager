@@ -31,10 +31,6 @@ final class SessionAlertTextTests: XCTestCase {
         XCTAssertTrue(body.contains("alpha (2), beta (1)"), body)
     }
 
-    func testBodyWithoutEntriesOmitsTheEnumeration() {
-        XCTAssertEqual(SessionAlertText.body(entries: []), L10n.t("alert.sessions.body"))
-    }
-
     func testConfirmButtonDiffersByScope() {
         XCTAssertEqual(SessionAlertText.confirmButton(scope: .quit),
                        L10n.t("alert.sessions.confirm.quit"))

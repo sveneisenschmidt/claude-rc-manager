@@ -84,7 +84,6 @@
 "alert.sessions.stop.title.one" = "¿Detener con 1 sesión activa?";
 "alert.sessions.stop.title.other" = "¿Detener con %d sesiones activas?";
 "alert.sessions.body.list" = "Carpetas afectadas: %@. Las sesiones en curso terminan de inmediato.";
-"alert.sessions.body" = "Las sesiones en curso terminan de inmediato.";
 "alert.sessions.confirm.quit" = "Salir de todos modos";
 "alert.sessions.confirm.stop" = "Detener de todos modos";
 "alert.sessions.cancel" = "Cancelar";

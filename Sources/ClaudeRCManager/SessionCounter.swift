@@ -8,8 +8,9 @@ import Foundation
 /// when the number actually changes; the receiver hops to the main actor.
 final class SessionCounter: @unchecked Sendable {
     /// Characters kept from the end of a chunk, so a `Capacity: 2/32` split
-    /// across two reads is still matched. Ten times the longest match this
-    /// looks for, which also covers an escape sequence caught mid-flight.
+    /// across two reads is still matched. The match is about 20 characters
+    /// long, so this leaves room for the escape sequences that can sit
+    /// inside it.
     static let carryOver = 256
 
     private static let pattern = try! NSRegularExpression(

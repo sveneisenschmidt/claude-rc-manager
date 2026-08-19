@@ -86,7 +86,6 @@
 "alert.sessions.stop.title.one" = "有 1 个活动会话，仍要停止吗？";
 "alert.sessions.stop.title.other" = "有 %d 个活动会话，仍要停止吗？";
 "alert.sessions.body.list" = "受影响的文件夹：%@。正在进行的会话会立即结束。";
-"alert.sessions.body" = "正在进行的会话会立即结束。";
 "alert.sessions.confirm.quit" = "仍然退出";
 "alert.sessions.confirm.stop" = "仍然停止";
 "alert.sessions.cancel" = "取消";

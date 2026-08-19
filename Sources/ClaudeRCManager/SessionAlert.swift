@@ -1,24 +1,24 @@
 import AppKit
 
-/// The confirmation shown before an action ends running sessions. Holds no
-/// logic beyond assembling the modal: the wording is SessionAlertText, the
-/// counts are ServerManager.
+/// The confirmation shown before an action ends running sessions. It only
+/// assembles the modal: the wording comes from SessionAlertText, the counts
+/// from ServerManager.
 @MainActor
 enum SessionAlert {
     /// True when the caller may proceed. Returns true without asking when
     /// nothing would be lost.
     ///
-    /// `enumerate` false leaves the folder list out, for the single-folder
-    /// Stop where the folder is already named by the menu.
+    /// The body always names the folders, the single-folder Stop included:
+    /// the menu has closed by the time the modal appears, so the alert is
+    /// the only place left that can say which folder is meant.
     static func confirm(scope: SessionAlertText.Scope,
-                        entries: [SessionEntry],
-                        enumerate: Bool = true) -> Bool
+                        entries: [SessionEntry]) -> Bool
     {
         let total = SessionAlertText.total(of: entries)
         guard total >= 1 else { return true }
         let alert = NSAlert()
         alert.messageText = SessionAlertText.title(scope: scope, count: total)
-        alert.informativeText = SessionAlertText.body(entries: enumerate ? entries : [])
+        alert.informativeText = SessionAlertText.body(entries: entries)
         return alert.runDestructive(cancel: L10n.t("alert.sessions.cancel"),
                                     confirm: SessionAlertText.confirmButton(scope: scope))
     }

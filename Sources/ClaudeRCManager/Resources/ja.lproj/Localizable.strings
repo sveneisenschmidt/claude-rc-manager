@@ -85,7 +85,6 @@
 "alert.sessions.stop.title.one" = "アクティブなセッションが1件あります。停止しますか？";
 "alert.sessions.stop.title.other" = "アクティブなセッションが%d件あります。停止しますか？";
 "alert.sessions.body.list" = "対象フォルダ：%@。実行中のセッションはすぐに終了します。";
-"alert.sessions.body" = "実行中のセッションはすぐに終了します。";
 "alert.sessions.confirm.quit" = "それでも終了";
 "alert.sessions.confirm.stop" = "それでも停止";
 "alert.sessions.cancel" = "キャンセル";

@@ -61,7 +61,7 @@ final class L10nTests: XCTestCase {
             "alert.loginItem.title", "alert.loginItem.requiresApproval",
             "alert.sessions.quit.title.one", "alert.sessions.quit.title.other",
             "alert.sessions.stop.title.one", "alert.sessions.stop.title.other",
-            "alert.sessions.body.list", "alert.sessions.body",
+            "alert.sessions.body.list",
             "alert.sessions.confirm.quit", "alert.sessions.confirm.stop",
             "alert.sessions.cancel",
             "alert.remove.sessions.one", "alert.remove.sessions.other",

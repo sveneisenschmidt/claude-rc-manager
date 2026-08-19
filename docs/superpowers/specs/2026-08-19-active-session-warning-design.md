@@ -4,8 +4,9 @@ Issue #1. Status: design agreed 2026-08-19.
 
 ## Problem
 
-Every path that stops a managed server kills whatever phone sessions run
-inside it. `applicationShouldTerminate` calls `stopAll()` (`main.swift:83`)
+Every path that stops a managed server kills whatever sessions are running
+inside it, whether they were started from the mobile app or from
+claude.ai/code. `applicationShouldTerminate` calls `stopAll()` (`main.swift:83`)
 and SIGKILLs anything still alive 5.5 s later (`main.swift:100`, `:102`);
 each stop is SIGTERM to the process group followed by SIGKILL after a 5 s
 grace period (`ServerProcess.swift:148`, `ProcessLauncher.swift:230-239`).
@@ -116,27 +117,29 @@ with an unknown count is not included, per decision 3.
 Split in two so the wording can be tested:
 
 - `SessionAlertText`, pure functions: `title(scope:count:)` for scope
-  `.quit` / `.stop`, `body(entries:)` (an empty list yields the variant
-  without the enumeration), `menuSuffix(count:)`, `removeSentence(count:)`,
-  plus `total(of:)` and `needsWarning(entries:)`. The threshold lives here
-  rather than in the modal, so a test covers it.
+  `.quit` / `.stop`, `body(entries:)`, `menuSuffix(count:)`,
+  `removeSentence(count:)` and `total(of:)`. The modal asks whenever
+  `total(of:)` is one or more; the number itself is covered by a test, the
+  comparison against it is one line inside the modal.
 - a thin `NSAlert` wrapper that runs the modal. Not covered.
 
 Shape, English key set:
 
 ```
-2 active sessions — quit anyway?
-Affected: claude-rc-manager (1), website (1). Running phone sessions will
-be cut off.
-[Cancel] [Quit Anyway]
+Quit with 2 active sessions?
+Affected: claude-rc-manager (1), website (1). Running sessions end
+immediately.
+[Quit Anyway] [Cancel]
 ```
 
-Cancel is added first and takes the Escape key equivalent. AppKit wires
-Escape only to a button literally titled "Cancel", which six of the seven
-translations are not; assigning it also takes Return away from that button,
-so no key press confirms and Escape cancels in every language. The
-single-folder "Stop" omits the enumeration, because the folder is already
-named by the menu it was invoked from.
+Cancel is added first and takes the Escape key equivalent. AppKit lays the
+buttons out right to left in the order they are added, so Cancel is the
+rightmost one. Escape is bound by hand because AppKit wires it only to a
+button literally titled "Cancel", which six of the seven translations are
+not; assigning it also takes Return away from that button, so no key press
+confirms. The single-folder "Stop" names its folder like every other case:
+the menu has closed by the time the modal appears, so the alert is the only
+place left that can say which folder is meant.
 
 The existing Remove confirmation is brought in line. It currently adds its
 destructive button first (`StatusMenuController.swift:277`), so Return
@@ -165,9 +168,9 @@ lost by that: the sessions are local processes under the app
 
 ## Menu
 
-`statusLabel` (`StatusMenuController.swift:177`) appends the count when
-`activeSessions >= 1`: `running · 2 Sessions`. Zero, including an unknown
-count, leaves the row as it is today. The count is visible before the alert
+A new `rowLabel` wraps `statusLabel` (`StatusMenuController.swift:177`) and
+appends the count when `activeSessions >= 1`: `running · 2 sessions`. Zero,
+including an unknown count, leaves the row as it is today. The count is visible before the alert
 appears, so the alert confirms something already seen.
 
 ## Localization
@@ -221,5 +224,6 @@ the singular for one.
   settings edit.
 - `sessionEntries`: folders without sessions filtered out, config order kept.
 - Text builder: one session against several, quit title against stop title,
-  body with and without the enumeration, menu suffix at zero and above, the
-  total and the warning threshold at zero and above.
+  the enumeration of folders and counts, menu suffix at zero and above, the
+  total over no folders and over several.
+- Quit reason: the six system reasons skip the warning, anything else asks.
