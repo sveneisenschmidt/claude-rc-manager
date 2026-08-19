@@ -69,9 +69,14 @@ final class ServerProcess {
     }
 
     func update(folder: FolderConfig) {
-        // Settings apply on next start (spec: SettingsWindow).
+        // Settings apply on next start (spec: SettingsWindow). A running
+        // server keeps the snapshot it launched with (`launchedFolder`), so
+        // an edit cannot change how the current run's exit is handled.
         self.folder = folder
     }
+
+    /// The folder configuration the current run was launched with.
+    private var launchedFolder: FolderConfig?
 
     func start(manual: Bool) {
         // `.restarting` counts as active (the server is still "on"), but the
@@ -111,6 +116,7 @@ final class ServerProcess {
                     Task { @MainActor in self?.handleExit(status: status) }
                 })
             self.server = server
+            launchedFolder = folder
             startedAt = DispatchTime.now()
             state = .starting
             readinessTask = Task { @MainActor [weak self] in
@@ -161,15 +167,19 @@ final class ServerProcess {
         // Flush and release the log handle: the next start rotates the file.
         logWriter?.close()
         logWriter = nil
+        // Decide from the snapshot this run launched with: a settings edit
+        // during the run must not change how this exit is handled.
+        let ranAs = launchedFolder ?? folder
+        launchedFolder = nil
         if userStopRequested {
             state = .stopped
             return
         }
-        if folder.spawnMode == .session {
+        if ranAs.spawnMode == .session {
             state = .ended // the CLI exits when the session ends: expected
             return
         }
-        guard folder.autoRestart else {
+        guard ranAs.autoRestart else {
             state = .failed("exited, status \(status)")
             return
         }

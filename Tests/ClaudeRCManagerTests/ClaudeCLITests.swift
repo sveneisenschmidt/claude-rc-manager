@@ -24,7 +24,7 @@ final class ClaudeCLITests: XCTestCase {
     func testRunTimeoutDoesNotLeakChildOrThread() throws {
         let marker = "claude-cli-timeout-test-\(UUID().uuidString)"
         let exp = expectation(description: "run returns")
-        var result: Data? = Data([0]) // sentinel; must become nil
+        var result: Data? = Data([0]) // placeholder value; must become nil
         var elapsed: TimeInterval = 0
         let start = Date()
 

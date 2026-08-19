@@ -28,7 +28,7 @@ final class ScriptLauncherTests: XCTestCase {
         return nil
     }
 
-    /// True once `pid` no longer exists (kill 0 = existence probe).
+    /// True once `pid` no longer exists (kill 0 asks without signaling).
     private func waitUntilGone(_ pid: pid_t, timeout: TimeInterval = 3) -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {

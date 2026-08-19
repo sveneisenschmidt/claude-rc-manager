@@ -30,7 +30,7 @@ final class ServerManager {
     func setFolders(_ folders: [FolderConfig], claudePath: String?) {
         // uniquingKeysWith, not uniqueKeysWithValues: a hand-edited config.json
         // can repeat a folder id, and a trap here would take the app down.
-        // ConfigStore re-keys duplicates on load; this is the belt to that
+        // ConfigStore re-keys duplicates on load; this repeats the check for
         // suspenders. First wins, matching the load-time keep-the-first rule.
         var existing = Dictionary(
             processes.map { ($0.folder.id, $0) }, uniquingKeysWith: { first, _ in first })

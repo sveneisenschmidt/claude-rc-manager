@@ -20,5 +20,7 @@
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Claude RC Manager opens Terminal to run "claude auth login" when you are not logged in.</string>
 </dict>
 </plist>

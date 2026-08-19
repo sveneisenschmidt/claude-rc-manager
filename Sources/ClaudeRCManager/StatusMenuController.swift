@@ -217,7 +217,21 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     // MARK: Actions
 
-    @objc private func openLogin() { cli.openLoginInTerminal() }
+    @objc private func openLogin() {
+        DispatchQueue.global().async { [cli] in
+            let opened = cli.openLoginInTerminal()
+            guard !opened else { return }
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Could not open Terminal"
+                alert.informativeText = "Automation permission may be denied. "
+                    + "Allow it in System Settings > Privacy & Security > Automation, "
+                    + "or run `claude auth login` in a terminal yourself."
+                NSApp.activate(ignoringOtherApps: true)
+                alert.runModal()
+            }
+        }
+    }
 
     @objc private func toggleServer(_ sender: NSMenuItem) {
         guard let id = sender.representedObject as? UUID,

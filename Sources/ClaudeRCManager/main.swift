@@ -1,7 +1,7 @@
 import AppKit
 
 // NOT @MainActor on the class: top-level code in main.swift is nonisolated,
-// so a @MainActor init would not compile (verified by probe). The
+// so a @MainActor init would not compile (verified by test compile). The
 // NSApplicationDelegate callbacks are main-actor anyway.
 // Revisit on a Swift 6 language-mode migration: the isolation of this class
 // (and of the top-level code below) is the one thing here that will need a
@@ -73,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Guards the single `reply(toApplicationShouldTerminate:)`: the poll
+    /// Keeps `reply(toApplicationShouldTerminate:)` to a single call: the poll
     /// and the deadline race each other, and replying twice is a hard AppKit
     /// error. Main-thread only, like both writers.
     private var didReplyToTerminate = false

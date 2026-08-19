@@ -83,7 +83,7 @@ final class ClaudeCLI: @unchecked Sendable {
                 // Microsecond TOCTOU vs pid recycling is accepted here: the
                 // pid was checked via isRunning just above, and this is a
                 // short-lived helper we spawned ourselves — unlike the
-                // long-lived inner server pid, which ProcessLauncher guards
+                // long-lived inner server pid, which ProcessLauncher protects
                 // with a start-time identity check.
                 Darwin.kill(p.processIdentifier, SIGKILL)
             }
@@ -163,19 +163,21 @@ final class ClaudeCLI: @unchecked Sendable {
     }
 
     /// Opens Terminal running `claude auth login` (interactive OAuth).
-    func openLoginInTerminal() {
+    /// Returns false when osascript failed — the automation permission
+    /// (NSAppleEventsUsageDescription prompt) was denied, or Terminal
+    /// could not be scripted — so the caller can tell the user instead of
+    /// failing silently. Blocking (waits for osascript); call off main.
+    @discardableResult
+    func openLoginInTerminal() -> Bool {
         let script = """
         tell application "Terminal"
             activate
             do script "claude auth login"
         end tell
         """
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        p.arguments = ["-e", script]
-        try? p.run()
         // The user is about to authenticate interactively; the next check
         // must hit the CLI instead of returning a stale cached verdict.
         lastAuth = nil
+        return ClaudeCLI.run(["/usr/bin/osascript", "-e", script], timeout: 15) != nil
     }
 }
