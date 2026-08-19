@@ -42,7 +42,23 @@ the checklist — every bullet there must map to at least one key. The
 status glyphs (`○ ● ◐ ✕`) belong to the key's VALUE
 (`status.stopped = "○ stopped"`), so translators see the full label.
 
-- [ ] **Step 2: Write `L10n.swift`**
+Note: `main.swift` produces two of the internal reason identifiers in the
+preflight closure ("claude not found", "not logged in") — those are
+identifiers, NOT UI text; do not touch them. Only genuine user-facing
+strings in main.swift (if any) migrate.
+
+SwiftPM lowercases lproj names in the emitted bundle: `zh-Hans.lproj`
+becomes `zh-hans.lproj` and `Bundle.localizations` reports `"zh-hans"`
+(verified). Use `zh-hans` everywhere downstream (Makefile, parity test,
+InfoPlist directory name); negotiation for `zh-Hans` preferences still
+resolves to it correctly.
+
+- [ ] **Step 2: Package.swift** — add `defaultLocalization: "en"` to the
+package and `resources: [.process("Resources")]` to the executable
+target (verified warning-free with multiple .lproj dirs under
+`Sources/ClaudeRCManager/Resources/`).
+
+- [ ] **Step 3: Write `L10n.swift`**
 
 ```swift
 import Foundation
@@ -91,12 +107,6 @@ enum L10n {
 }
 ```
 
-- [ ] **Step 3: Package.swift** — add `defaultLocalization: "en"` to the
-package and `resources: [.process("Resources")]` (or per-lproj `.process`
-entries — whatever `swift build` accepts warning-free) to the executable
-target. Directory layout: all `.lproj` dirs under
-`Sources/ClaudeRCManager/Resources/`.
-
 - [ ] **Step 4: Write the full `en.lproj/Localizable.strings`** — one
 entry per inventory item from Step 1, values byte-identical to today's UI
 text. `reason.exited` = `"exited, status %d"`.
@@ -110,12 +120,39 @@ content) stay untouched.
 
 - [ ] **Step 6: Write L10nTests**
 
+Two traps this test must avoid (both probe-verified): `L10n.t` falls back
+to the key, so comparing two `t()` calls passes even when the catalog is
+missing entirely; and negotiated lookups return GERMAN on this machine
+under `swift test` (the module bundle negotiates against system
+language), so never assert a specific language through `L10n.t`.
+
 ```swift
 import XCTest
 @testable import ClaudeRCManager
 
 final class L10nTests: XCTestCase {
+    /// Reads the en table directly, independent of language negotiation.
+    private func english(_ key: String) -> String? {
+        let path = L10n.bundle.path(forResource: "Localizable", ofType: "strings",
+                                    inDirectory: nil, forLocalization: "en")!
+        return (NSDictionary(contentsOfFile: path) as! [String: String])[key]
+    }
+
+    func testLookupIsHealthy() {
+        // A key that exists resolves to something other than itself...
+        XCTAssertNotEqual(L10n.t("menu.quit"), "menu.quit")
+        // ...and a missing key falls back to the key.
+        XCTAssertEqual(L10n.t("definitely.not.a.key"), "definitely.not.a.key")
+    }
+
+    func testEnglishBaseValues() {
+        XCTAssertEqual(english("menu.quit"), "Quit Claude RC Manager")
+        XCTAssertEqual(english("status.running"), "● running")
+        XCTAssertEqual(english("reason.exited"), "exited, status %d")
+    }
+
     func testDisplayReasonMapsAllShapes() {
+        // Both sides go through L10n.t, so these hold in every language.
         XCTAssertEqual(L10n.displayReason("claude not found"), L10n.t("reason.claudeNotFound"))
         XCTAssertEqual(L10n.displayReason("not logged in"), L10n.t("reason.notLoggedIn"))
         XCTAssertEqual(L10n.displayReason("folder missing"), L10n.t("reason.folderMissing"))
@@ -123,17 +160,13 @@ final class L10nTests: XCTestCase {
         XCTAssertEqual(L10n.displayReason("launch error"), L10n.t("reason.launchError"))
         XCTAssertEqual(L10n.displayReason("exited, status 3"), L10n.t("reason.exited", Int32(3)))
         XCTAssertEqual(L10n.displayReason("something new"), "something new")
-    }
-
-    func testEnglishLookupReturnsBaseValues() {
-        XCTAssertEqual(L10n.t("menu.quit"), "Quit Claude RC Manager")
-        XCTAssertFalse(L10n.t("status.running").isEmpty)
+        // Guard against the tautology trap: the mapped keys must exist.
+        XCTAssertNotEqual(L10n.t("reason.claudeNotFound"), "reason.claudeNotFound")
     }
 }
 ```
 
-(Adjust the asserted key names to the final inventory; the point is a
-lookup that must NOT return the raw key.)
+(Adjust key names to the final inventory.)
 
 - [ ] **Step 7:** `swift build` (warning-free) + `swift test` all green;
 existing tests must pass unchanged (internal identifiers untouched).
@@ -147,13 +180,35 @@ existing tests must pass unchanged (internal identifiers untouched).
 **Files:**
 - Create: `Tests/ClaudeRCManagerTests/LocalizationParityTests.swift`
 
-- [ ] **Step 1: Write the parity test.** Load every `*.lproj/Localizable.strings`
-from the L10n bundle (`L10n.bundle.paths(forResourcesOfType: "strings" ...)`
-or enumerate `Bundle` localizations), parse each with
-`PropertyListSerialization` (strings files are plists), and assert every
-locale's key set is EXACTLY the `en` set (missing and extra keys both
-fail, message names the locale and the differing keys). With only `en`
-present the test passes trivially.
+- [ ] **Step 1: Write the parity test.** Two probe-verified traps: a
+runtime-discovered locale set makes the test pass when a locale is
+missing entirely, and `paths(forResourcesOfType:)` returns only the
+NEGOTIATED localization's file, not one per language. Therefore:
+
+```swift
+let expected: Set<String> = ["en", "de", "fr", "es", "it", "ja", "zh-hans"]
+// (zh-hans lowercase: SwiftPM lowercases lproj names in the bundle)
+
+func keys(_ locale: String) throws -> Set<String> {
+    let path = try XCTUnwrap(L10n.bundle.path(
+        forResource: "Localizable", ofType: "strings",
+        inDirectory: nil, forLocalization: locale),
+        "\(locale).lproj/Localizable.strings missing")
+    let data = try Data(contentsOf: URL(fileURLWithPath: path))
+    let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
+    return Set(try XCTUnwrap(plist as? [String: String]).keys)
+}
+```
+
+Assert: `Set(L10n.bundle.localizations).isSuperset(of: expected)`; the
+`en` key set is non-empty; every other expected locale's key set equals
+`en`'s exactly (missing AND extra fail, message names locale + keys).
+Until Tasks 3/4 land, restrict `expected` to `["en"]` with a TODO — the
+translation tasks each extend it (so the test is red if a task forgets).
+
+Additionally, per key: the multiset of format specifiers (conversion
+chars after stripping `%n$` positions) must match `en`'s — a translation
+that drops or retypes a `%@`/`%d` corrupts `String(format:)` at runtime.
 
 - [ ] **Step 2:** Run it; commit — `git commit -m "Add localization key-parity test"`
 
@@ -171,7 +226,8 @@ system's ellipsis style), Apple's own localized System-Settings pane
 names for the two alerts that reference them, positional specifiers
 where word order differs. CLI enum raw values never appear in these
 files (they are not localized).
-- [ ] **Step 2:** `swift test` — the parity test now checks these locales.
+- [ ] **Step 2:** Extend the parity test's `expected` set by these four
+locales; `swift test` green.
 - [ ] **Step 3: Commit** — `git commit -m "Add German, French, Spanish, Italian translations"`
 
 ---
@@ -184,7 +240,10 @@ files (they are not localized).
 - [ ] **Step 1:** Translate every key. CJK rules binding: no ASCII spaces
 around interpolations mid-sentence, CJK punctuation (、。), Apple's own
 localized pane names. Keep the status glyphs (`○ ● ◐ ✕`) exactly as in en.
-- [ ] **Step 2:** `swift test` green (parity).
+The SOURCE directory is `zh-Hans.lproj` (SwiftPM lowercases it in the
+emitted bundle; the parity test expects `zh-hans`).
+- [ ] **Step 2:** Extend the parity `expected` set to the full seven;
+`swift test` green.
 - [ ] **Step 3: Commit** — `git commit -m "Add Japanese and Simplified Chinese translations"`
 
 ---
@@ -210,12 +269,16 @@ in `Info.plist` (the strings file overrides, it does not supply).
 
 - [ ] **Step 1:** After copying the binary, copy the localizations:
 
+The emitted bundle layout is FLAT (probe-verified:
+`<bundle>/{en,de,…}.lproj/Localizable.strings`, no `Contents/`), and
+SwiftPM lowercases `zh-Hans` → `zh-hans`:
+
 ```makefile
 	mkdir -p "$(APP_DIR)/Contents/Resources"
-	for lproj in "$(BUILD_DIR)/ClaudeRCManager_ClaudeRCManager.bundle/Contents/Resources/"*.lproj; do \
+	for lproj in "$(BUILD_DIR)/ClaudeRCManager_ClaudeRCManager.bundle/"*.lproj; do \
 		cp -R "$$lproj" "$(APP_DIR)/Contents/Resources/"; \
 	done
-	for lang in en de fr es it ja zh-Hans; do \
+	for lang in en de fr es it ja zh-hans; do \
 		test -f "$(APP_DIR)/Contents/Resources/$$lang.lproj/Localizable.strings" \
 			|| { echo "missing $$lang.lproj/Localizable.strings"; exit 1; }; \
 		cp "Resources/InfoPlist/$$lang.lproj/InfoPlist.strings" \
@@ -223,14 +286,15 @@ in `Info.plist` (the strings file overrides, it does not supply).
 	done
 ```
 
-Caveat: the SwiftPM bundle's inner layout may be flat
-(`<bundle>/en.lproj/...`) rather than `Contents/Resources` — check the
-actual emitted layout with `find .build/release/ClaudeRCManager_ClaudeRCManager.bundle`
-first and adjust the glob; the completeness check stays either way.
-Recipe lines are TABs. `codesign` stays the last step.
+The `Resources/InfoPlist/` directories use the lowercase `zh-hans.lproj`
+name to match. Recipe lines are TABs. `codesign` stays the last step.
+Also add `CFBundleDevelopmentRegion` = `en` to `Resources/Info.plist`
+(the base-language declaration for bundle negotiation).
 
 - [ ] **Step 2:** `make app` succeeds; `codesign --verify --strict` exit 0;
 all seven `.lproj` dirs present in `Contents/Resources/` with both files.
+Negative check: temporarily move one `.lproj` out of the emitted SwiftPM
+bundle, run `make app`, assert it exits non-zero; restore.
 - [ ] **Step 3: Commit** — `git commit -m "Ship localizations in the app bundle"`
 
 ---
@@ -243,7 +307,9 @@ all seven `.lproj` dirs present in `Contents/Resources/` with both files.
 
 - [ ] **Step 1:** Amend the main spec per the localization spec's
 "Main-spec amendments" section (UI-language line; `exited (status N)` →
-`exited, status N`).
+`exited, status N`). Also amend the localization spec's InfoPlist path
+to the implemented layout (`Resources/InfoPlist/<lang>.lproj/`, lowercase
+`zh-hans`).
 - [ ] **Step 2:** README: one sentence under Usage — the app follows the
 macOS system language; list the seven languages.
 - [ ] **Step 3: Commit** — `git commit -m "Record localization in spec and README"`
@@ -253,20 +319,23 @@ macOS system language; list the seven languages.
 ### Task 8: Verification
 
 - [ ] **Step 1:** `swift build` warning-free, `swift test` all green.
-- [ ] **Step 2:** `make app`; then run the installed-layout binary once
-with a language override and assert a German string end to end:
+- [ ] **Step 2:** `make app`; then verify the assembled bundle headlessly
+with a scratchpad Swift probe. Probe-verified facts: a bundle loaded via
+`Bundle(path:)` does NOT negotiate against process language settings —
+`localizedString(forKey:)` on it returns English regardless. The honest
+headless checks are:
 
-```bash
-".build/release/Claude RC Manager.app/Contents/MacOS/ClaudeRCManager" -AppleLanguages '(de)' &
-sleep 3; kill %1
+```swift
+let b = Bundle(path: appPath)!
+// negotiation input is complete:
+assert(Bundle.preferredLocalizations(from: b.localizations, forPreferences: ["de"]) == ["de"])
+assert(Bundle.preferredLocalizations(from: b.localizations, forPreferences: ["zh-Hans"]) == ["zh-hans"])
+assert(Bundle.preferredLocalizations(from: b.localizations, forPreferences: ["pt-BR"]) == ["en"])
+// and the shipped tables hold the right values (targeted read):
+let de = b.path(forResource: "Localizable", ofType: "strings",
+                inDirectory: nil, forLocalization: "de")!
+assert((NSDictionary(contentsOfFile: de) as! [String: String])["menu.quit"] != nil)
 ```
-
-is NOT sufficient (menu not inspectable headless) — instead verify the
-negotiation layer directly: a temporary Swift probe in the scratchpad
-that loads `Bundle(path: ".../Claude RC Manager.app")!` and asserts
-`localizedString(forKey:)` returns the German value under
-`-AppleLanguages '(de)'`-style lookup
-(`Bundle.preferredLocalizations(from:)` with `["de"]` must pick "de").
 - [ ] **Step 3:** Hand off to Sven: reinstall, spot-check German +
 one CJK language visually (menu + one alert), confirm nothing regressed
 in English.
