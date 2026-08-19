@@ -17,6 +17,8 @@
 "menu.openLog" = "Abrir registro";
 "menu.settings" = "Ajustes…";
 "menu.remove" = "Eliminar…";
+"menu.sessions.one" = "· 1 sesión";
+"menu.sessions.other" = "· %d sesiones";
 
 /* MARK: warning rows */
 "warning.cliNotFound" = "⚠️ CLI claude no encontrada — instala Claude Code";
@@ -69,29 +71,25 @@
 "alert.remove.body" = "El servidor se detiene y la carpeta se elimina de la lista. El archivo de registro se conserva.";
 "alert.remove.confirm" = "Eliminar";
 "alert.remove.cancel" = "Cancelar";
+"alert.remove.sessions.one" = "Esta carpeta tiene 1 sesión activa. Termina con el servidor.";
+"alert.remove.sessions.other" = "Esta carpeta tiene %d sesiones activas. Terminan con el servidor.";
 "alert.duplicateFolder.title" = "La carpeta ya está añadida";
 "alert.saveFailed.title" = "No se han podido guardar los ajustes";
 "alert.saveFailed.unreadable" = "No se ha podido leer ni apartar el archivo config.json existente, así que no se sobrescribe. Los cambios se aplican hasta que salgas de la app.";
 "alert.saveFailed.body" = "%@ Los cambios se aplican hasta que salgas de la app.";
 "alert.loginItem.title" = "No se ha podido cambiar el ítem de inicio de sesión";
 "alert.loginItem.requiresApproval" = "Autoriza Claude RC Manager en Ajustes del Sistema > General > Ítems de inicio de sesión.";
+"alert.sessions.quit.title.one" = "¿Salir con 1 sesión activa?";
+"alert.sessions.quit.title.other" = "¿Salir con %d sesiones activas?";
+"alert.sessions.stop.title.one" = "¿Detener con 1 sesión activa?";
+"alert.sessions.stop.title.other" = "¿Detener con %d sesiones activas?";
+"alert.sessions.body.list" = "Carpetas afectadas: %@. Las sesiones en curso terminan de inmediato.";
+"alert.sessions.body" = "Las sesiones en curso terminan de inmediato.";
+"alert.sessions.confirm.quit" = "Salir de todos modos";
+"alert.sessions.confirm.stop" = "Detener de todos modos";
+"alert.sessions.cancel" = "Cancelar";
 
 /* MARK: accessibility (the app name is a product name and stays fixed) */
 "a11y.warning" = "Claude RC Manager — advertencia";
 "a11y.active" = "Claude RC Manager — activo";
 "a11y.idle" = "Claude RC Manager — inactivo";
-
-/* MARK: active-session warning */
-"alert.sessions.quit.title.one" = "¿Salir con 1 sesión activa?";
-"alert.sessions.quit.title.other" = "¿Salir con %d sesiones activas?";
-"alert.sessions.stop.title.one" = "¿Detener con 1 sesión activa?";
-"alert.sessions.stop.title.other" = "¿Detener con %d sesiones activas?";
-"alert.sessions.body.list" = "Afectados: %@. Las sesiones en curso en el teléfono terminan de inmediato.";
-"alert.sessions.body" = "Las sesiones en curso en el teléfono terminan de inmediato.";
-"alert.sessions.confirm.quit" = "Salir de todos modos";
-"alert.sessions.confirm.stop" = "Detener de todos modos";
-"alert.sessions.cancel" = "Cancelar";
-"alert.remove.sessions.one" = "Esta carpeta tiene 1 sesión activa. Termina con el servidor.";
-"alert.remove.sessions.other" = "Esta carpeta tiene %d sesiones activas. Terminan con el servidor.";
-"menu.sessions.one" = "· 1 sesión";
-"menu.sessions.other" = "· %d sesiones";

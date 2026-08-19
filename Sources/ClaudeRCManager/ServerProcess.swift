@@ -80,7 +80,8 @@ final class ServerProcess {
 
     /// Last count the running server reported, nil while unknown. Cleared
     /// when a run ends, which is the only place it needs clearing: a new run
-    /// can only start once the previous one is over.
+    /// can only start once the previous one is over. Read by the tests;
+    /// callers use `activeSessions`.
     private(set) var sessionCount: Int?
     /// One counter per run: a chunk can still be in flight when a run ends,
     /// and its report must not survive into the next one.
@@ -229,13 +230,18 @@ final class ServerProcess {
         }
     }
 
-    /// Sessions running inside this server, as far as the app can know.
-    /// The single number the menu row and the stop warning both use.
+    /// Sessions this server is running, for the menu row and the warning
+    /// shown before a stop.
+    ///
+    /// `.stopping` reports none: that stop was already confirmed, and the
+    /// sessions are being torn down, so a quit during the grace period must
+    /// not ask about them a second time.
     var activeSessions: Int {
         // The run's own snapshot, the same rule handleExit follows: a settings
         // edit mid-run must not change how this run is counted. No snapshot
         // means no live run (waiting out a restart backoff), hence no sessions.
-        guard state.isActive, let ranAs = launchedFolder else { return 0 }
+        guard state.isActive, state != .stopping,
+              let ranAs = launchedFolder else { return 0 }
         // Session mode prints no capacity line: the server is the session.
         if ranAs.spawnMode == .session { return 1 }
         return sessionCount ?? 0

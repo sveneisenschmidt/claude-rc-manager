@@ -46,8 +46,8 @@ Click the terminal icon in the menu bar:
 
 - **Add Folder…** — pick a project folder; a settings window opens.
 - Per folder: **Start/Stop**, **Open Log**, **Settings…**, **Remove…**.
-- **Sessions** — a folder's row shows how many sessions its server reports
-  (`● running · 2 Sessions`). Stop, Stop All, Remove… and Quit ask before
+- **Sessions** — a folder's row shows how many sessions are running in it
+  (`● running · 2 sessions`). Stop, Stop All, Remove… and Quit ask before
   they end running sessions.
 - **External servers** — remote-control processes started outside the app
   are listed read-only.
@@ -56,8 +56,10 @@ Click the terminal icon in the menu bar:
 ## Limitations
 
 - Force-quitting the app leaves servers running (regular quit stops them).
-- A server that has not reported a session count yet counts as empty, so a
-  stop in the first seconds after a start does not ask.
+- The count comes from the server's own output, so a server that has not
+  reported one yet counts as empty and a stop in the first seconds after a
+  start does not ask. In `session` spawn mode the server is the session and
+  counts as one for as long as it runs.
 - Logout, restart and shutdown stop the servers without asking; the sessions
   end with the login session either way.
 - There are no downloadable releases; build from source with `make install`.

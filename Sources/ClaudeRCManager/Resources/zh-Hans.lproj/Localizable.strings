@@ -19,6 +19,8 @@
 "menu.openLog" = "打开日志";
 "menu.settings" = "设置…";
 "menu.remove" = "移除…";
+"menu.sessions.one" = "· 1 个会话";
+"menu.sessions.other" = "· %d 个会话";
 
 /* MARK: warning rows */
 "warning.cliNotFound" = "⚠️ 未找到 claude CLI — 请安装 Claude Code";
@@ -71,29 +73,25 @@
 "alert.remove.body" = "将停止服务器，并将文件夹从列表中移除。日志文件将保留。";
 "alert.remove.confirm" = "移除";
 "alert.remove.cancel" = "取消";
+"alert.remove.sessions.one" = "此文件夹有 1 个活动会话，会随服务器一起结束。";
+"alert.remove.sessions.other" = "此文件夹有 %d 个活动会话，会随服务器一起结束。";
 "alert.duplicateFolder.title" = "文件夹已添加";
 "alert.saveFailed.title" = "无法存储设置";
 "alert.saveFailed.unreadable" = "现有的 config.json 无法读取，也无法移开备份，因此不会覆盖。";
 "alert.saveFailed.body" = "%@更改在退出前有效。";
 "alert.loginItem.title" = "无法更改登录项";
 "alert.loginItem.requiresApproval" = "请在系统设置 > 通用 > 登录项中允许 Claude RC Manager。";
+"alert.sessions.quit.title.one" = "有 1 个活动会话，仍要退出吗？";
+"alert.sessions.quit.title.other" = "有 %d 个活动会话，仍要退出吗？";
+"alert.sessions.stop.title.one" = "有 1 个活动会话，仍要停止吗？";
+"alert.sessions.stop.title.other" = "有 %d 个活动会话，仍要停止吗？";
+"alert.sessions.body.list" = "受影响的文件夹：%@。正在进行的会话会立即结束。";
+"alert.sessions.body" = "正在进行的会话会立即结束。";
+"alert.sessions.confirm.quit" = "仍然退出";
+"alert.sessions.confirm.stop" = "仍然停止";
+"alert.sessions.cancel" = "取消";
 
 /* MARK: accessibility (the app name is a product name and stays fixed) */
 "a11y.warning" = "Claude RC Manager — 警告";
 "a11y.active" = "Claude RC Manager — 活跃";
 "a11y.idle" = "Claude RC Manager — 空闲";
-
-/* MARK: active-session warning */
-"alert.sessions.quit.title.one" = "有 1 个活动会话，仍要退出吗？";
-"alert.sessions.quit.title.other" = "有 %d 个活动会话，仍要退出吗？";
-"alert.sessions.stop.title.one" = "有 1 个活动会话，仍要停止吗？";
-"alert.sessions.stop.title.other" = "有 %d 个活动会话，仍要停止吗？";
-"alert.sessions.body.list" = "受影响：%@。手机上正在进行的会话会立即结束。";
-"alert.sessions.body" = "手机上正在进行的会话会立即结束。";
-"alert.sessions.confirm.quit" = "仍然退出";
-"alert.sessions.confirm.stop" = "仍然停止";
-"alert.sessions.cancel" = "取消";
-"alert.remove.sessions.one" = "此文件夹有 1 个活动会话，会随服务器一起结束。";
-"alert.remove.sessions.other" = "此文件夹有 %d 个活动会话，会随服务器一起结束。";
-"menu.sessions.one" = "· 1 个会话";
-"menu.sessions.other" = "· %d 个会话";

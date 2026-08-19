@@ -17,6 +17,8 @@
 "menu.openLog" = "Ouvrir le journal";
 "menu.settings" = "Réglages…";
 "menu.remove" = "Retirer…";
+"menu.sessions.one" = "· 1 session";
+"menu.sessions.other" = "· %d sessions";
 
 /* MARK: warning rows */
 "warning.cliNotFound" = "⚠️ CLI claude introuvable — installer Claude Code";
@@ -69,29 +71,25 @@
 "alert.remove.body" = "Le serveur est arrêté et le dossier retiré de la liste. Le fichier journal est conservé.";
 "alert.remove.confirm" = "Retirer";
 "alert.remove.cancel" = "Annuler";
+"alert.remove.sessions.one" = "Ce dossier a 1 session active. Elle se termine avec le serveur.";
+"alert.remove.sessions.other" = "Ce dossier a %d sessions actives. Elles se terminent avec le serveur.";
 "alert.duplicateFolder.title" = "Dossier déjà ajouté";
 "alert.saveFailed.title" = "Impossible d'enregistrer les réglages";
 "alert.saveFailed.unreadable" = "Le fichier config.json existant n'a pas pu être lu ni mis de côté ; il n'est donc pas remplacé. Les modifications s'appliquent jusqu'à la fermeture de l'app.";
 "alert.saveFailed.body" = "%@ Les modifications s'appliquent jusqu'à la fermeture de l'app.";
 "alert.loginItem.title" = "Impossible de modifier l'élément d'ouverture";
 "alert.loginItem.requiresApproval" = "Autoriser Claude RC Manager dans Réglages Système > Général > Ouverture.";
+"alert.sessions.quit.title.one" = "Quitter avec 1 session active ?";
+"alert.sessions.quit.title.other" = "Quitter avec %d sessions actives ?";
+"alert.sessions.stop.title.one" = "Arrêter avec 1 session active ?";
+"alert.sessions.stop.title.other" = "Arrêter avec %d sessions actives ?";
+"alert.sessions.body.list" = "Dossiers concernés : %@. Les sessions en cours se terminent immédiatement.";
+"alert.sessions.body" = "Les sessions en cours se terminent immédiatement.";
+"alert.sessions.confirm.quit" = "Quitter quand même";
+"alert.sessions.confirm.stop" = "Arrêter quand même";
+"alert.sessions.cancel" = "Annuler";
 
 /* MARK: accessibility (the app name is a product name and stays fixed) */
 "a11y.warning" = "Claude RC Manager — avertissement";
 "a11y.active" = "Claude RC Manager — actif";
 "a11y.idle" = "Claude RC Manager — inactif";
-
-/* MARK: active-session warning */
-"alert.sessions.quit.title.one" = "Quitter avec 1 session active ?";
-"alert.sessions.quit.title.other" = "Quitter avec %d sessions actives ?";
-"alert.sessions.stop.title.one" = "Arrêter avec 1 session active ?";
-"alert.sessions.stop.title.other" = "Arrêter avec %d sessions actives ?";
-"alert.sessions.body.list" = "Concernés : %@. Les sessions en cours sur le téléphone se terminent immédiatement.";
-"alert.sessions.body" = "Les sessions en cours sur le téléphone se terminent immédiatement.";
-"alert.sessions.confirm.quit" = "Quitter quand même";
-"alert.sessions.confirm.stop" = "Arrêter quand même";
-"alert.sessions.cancel" = "Annuler";
-"alert.remove.sessions.one" = "Ce dossier a 1 session active. Elle se termine avec le serveur.";
-"alert.remove.sessions.other" = "Ce dossier a %d sessions actives. Elles se terminent avec le serveur.";
-"menu.sessions.one" = "· 1 session";
-"menu.sessions.other" = "· %d sessions";

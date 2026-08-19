@@ -36,16 +36,13 @@ enum SessionAlertText {
         return L10n.t("alert.sessions.body.list", list)
     }
 
-    static func confirm(scope: Scope) -> String { L10n.t(scope.confirmKey) }
+    /// Title of the destructive button.
+    static func confirmButton(scope: Scope) -> String { L10n.t(scope.confirmKey) }
 
-    /// Sessions an action would end.
+    /// Sessions an action would end. One or more of them is what makes the
+    /// warning appear at all, so this is where that threshold is decided.
     static func total(of entries: [SessionEntry]) -> Int {
         entries.reduce(0) { $0 + $1.count }
-    }
-
-    /// Whether the action needs confirming at all.
-    static func needsWarning(entries: [SessionEntry]) -> Bool {
-        total(of: entries) >= 1
     }
 
     /// Suffix for a menu row, nil when there is nothing to show.

@@ -17,6 +17,8 @@
 "menu.openLog" = "Protokoll öffnen";
 "menu.settings" = "Einstellungen…";
 "menu.remove" = "Entfernen…";
+"menu.sessions.one" = "· 1 Sitzung";
+"menu.sessions.other" = "· %d Sitzungen";
 
 /* MARK: warning rows */
 "warning.cliNotFound" = "⚠️ claude CLI nicht gefunden — Claude Code installieren";
@@ -69,29 +71,25 @@
 "alert.remove.body" = "Der Server wird gestoppt und der Ordner aus der Liste entfernt. Die Protokolldatei bleibt erhalten.";
 "alert.remove.confirm" = "Entfernen";
 "alert.remove.cancel" = "Abbrechen";
+"alert.remove.sessions.one" = "In diesem Ordner läuft 1 aktive Sitzung. Sie endet mit dem Server.";
+"alert.remove.sessions.other" = "In diesem Ordner laufen %d aktive Sitzungen. Sie enden mit dem Server.";
 "alert.duplicateFolder.title" = "Ordner bereits hinzugefügt";
 "alert.saveFailed.title" = "Einstellungen konnten nicht gesichert werden";
 "alert.saveFailed.unreadable" = "Die vorhandene config.json konnte nicht gelesen oder beiseitegelegt werden und wird deshalb nicht überschrieben. Die Änderungen gelten bis zum Beenden.";
 "alert.saveFailed.body" = "%@ Die Änderungen gelten bis zum Beenden.";
 "alert.loginItem.title" = "Anmeldeobjekt konnte nicht geändert werden";
 "alert.loginItem.requiresApproval" = "Claude RC Manager unter Systemeinstellungen > Allgemein > Anmeldeobjekte erlauben.";
+"alert.sessions.quit.title.one" = "Mit 1 aktiven Sitzung beenden?";
+"alert.sessions.quit.title.other" = "Mit %d aktiven Sitzungen beenden?";
+"alert.sessions.stop.title.one" = "Mit 1 aktiven Sitzung stoppen?";
+"alert.sessions.stop.title.other" = "Mit %d aktiven Sitzungen stoppen?";
+"alert.sessions.body.list" = "Betroffen: %@. Laufende Sitzungen enden sofort.";
+"alert.sessions.body" = "Laufende Sitzungen enden sofort.";
+"alert.sessions.confirm.quit" = "Trotzdem beenden";
+"alert.sessions.confirm.stop" = "Trotzdem stoppen";
+"alert.sessions.cancel" = "Abbrechen";
 
 /* MARK: accessibility (the app name is a product name and stays fixed) */
 "a11y.warning" = "Claude RC Manager — Warnung";
 "a11y.active" = "Claude RC Manager — aktiv";
 "a11y.idle" = "Claude RC Manager — inaktiv";
-
-/* MARK: active-session warning */
-"alert.sessions.quit.title.one" = "Mit 1 aktiven Sitzung beenden?";
-"alert.sessions.quit.title.other" = "Mit %d aktiven Sitzungen beenden?";
-"alert.sessions.stop.title.one" = "Mit 1 aktiven Sitzung stoppen?";
-"alert.sessions.stop.title.other" = "Mit %d aktiven Sitzungen stoppen?";
-"alert.sessions.body.list" = "Betroffen: %@. Laufende Sitzungen auf dem Telefon enden sofort.";
-"alert.sessions.body" = "Laufende Sitzungen auf dem Telefon enden sofort.";
-"alert.sessions.confirm.quit" = "Trotzdem beenden";
-"alert.sessions.confirm.stop" = "Trotzdem stoppen";
-"alert.sessions.cancel" = "Abbrechen";
-"alert.remove.sessions.one" = "In diesem Ordner läuft 1 aktive Sitzung. Sie endet mit dem Server.";
-"alert.remove.sessions.other" = "In diesem Ordner laufen %d aktive Sitzungen. Sie enden mit dem Server.";
-"menu.sessions.one" = "· 1 Sitzung";
-"menu.sessions.other" = "· %d Sitzungen";

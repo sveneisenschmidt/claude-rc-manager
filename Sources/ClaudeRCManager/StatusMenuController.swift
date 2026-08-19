@@ -285,21 +285,17 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
               let process = manager.process(id: id) else { return }
         let alert = NSAlert()
         alert.messageText = L10n.t("alert.remove.title", process.folder.name)
-        // One dialog, not two: the sessions warning joins the existing
-        // confirmation instead of stacking on top of it.
+        // The session sentence is added to this confirmation, so removing a
+        // folder with live sessions still shows one dialog. A separate line
+        // rather than a joined sentence: the two catalogs that write without
+        // spaces after a full stop would otherwise carry a stray one.
         if let sessions = SessionAlertText.removeSentence(count: process.activeSessions) {
-            alert.informativeText = sessions + " " + L10n.t("alert.remove.body")
+            alert.informativeText = sessions + "\n" + L10n.t("alert.remove.body")
         } else {
             alert.informativeText = L10n.t("alert.remove.body")
         }
-        // Cancel first, like the sessions warning: the more destructive of
-        // the two dialogs must not have the riskier default.
-        alert.addButton(withTitle: L10n.t("alert.remove.cancel"))
-        alert.addButton(withTitle: L10n.t("alert.remove.confirm"))
-        alert.buttons[1].hasDestructiveAction = true
-        alert.buttons[0].keyEquivalent = "\u{1b}"
-        NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertSecondButtonReturn else { return }
+        guard alert.runDestructive(cancel: L10n.t("alert.remove.cancel"),
+                                   confirm: L10n.t("alert.remove.confirm")) else { return }
         process.stop()
         // An open settings window for this folder still holds the folder
         // snapshot it opened with; its Save would resurrect the removed

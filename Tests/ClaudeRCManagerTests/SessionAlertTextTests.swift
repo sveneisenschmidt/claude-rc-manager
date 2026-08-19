@@ -36,10 +36,10 @@ final class SessionAlertTextTests: XCTestCase {
     }
 
     func testConfirmButtonDiffersByScope() {
-        XCTAssertEqual(SessionAlertText.confirm(scope: .quit),
+        XCTAssertEqual(SessionAlertText.confirmButton(scope: .quit),
                        L10n.t("alert.sessions.confirm.quit"))
-        XCTAssertNotEqual(SessionAlertText.confirm(scope: .quit),
-                          SessionAlertText.confirm(scope: .stop))
+        XCTAssertNotEqual(SessionAlertText.confirmButton(scope: .quit),
+                          SessionAlertText.confirmButton(scope: .stop))
     }
 
     func testMenuSuffixIsNilBelowOne() {
@@ -60,14 +60,12 @@ final class SessionAlertTextTests: XCTestCase {
                        L10n.t("alert.remove.sessions.other", Int32(2)))
     }
 
-    /// The alert's only real decision, kept here so it is testable: the
-    /// modal itself has no unit test.
-    func testTotalAndWarningThreshold() {
+    /// The number the alert's threshold is read from, kept here so it is
+    /// testable: the modal itself has no unit test.
+    func testTotalCountsEveryFolder() {
         XCTAssertEqual(SessionAlertText.total(of: []), 0)
-        XCTAssertFalse(SessionAlertText.needsWarning(entries: []))
         let entries = [SessionEntry(name: "alpha", count: 2),
                        SessionEntry(name: "beta", count: 1)]
         XCTAssertEqual(SessionAlertText.total(of: entries), 3)
-        XCTAssertTrue(SessionAlertText.needsWarning(entries: entries))
     }
 }

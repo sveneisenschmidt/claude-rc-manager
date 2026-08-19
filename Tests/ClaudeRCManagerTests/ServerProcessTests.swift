@@ -219,4 +219,16 @@ final class ServerProcessTests: XCTestCase {
         try await Task.sleep(nanoseconds: 200_000_000)
         XCTAssertNil(sp.sessionCount, "a superseded run must not set the count")
     }
+
+    func testStoppingReportsNoSessions() async throws {
+        let (sp, launcher) = makeSUT()
+        sp.start(manual: true)
+        try await waitFor({ sp.state == .running }, "must reach running")
+        launcher.servers[0].onOutput?(Data("Capacity: 2/32".utf8))
+        try await waitFor({ sp.sessionCount == 2 }, "reported count must be applied")
+        sp.stop()
+        XCTAssertEqual(sp.state, .stopping)
+        XCTAssertEqual(sp.activeSessions, 0,
+                       "a confirmed stop must not be warned about a second time")
+    }
 }

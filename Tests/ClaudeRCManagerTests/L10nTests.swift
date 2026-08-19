@@ -33,7 +33,7 @@ final class L10nTests: XCTestCase {
         XCTAssertEqual(try english("a11y.warning"), "Claude RC Manager — warning")
         XCTAssertEqual(try english("alert.sessions.quit.title.other"),
                        "Quit with %d active sessions?")
-        XCTAssertEqual(try english("menu.sessions.one"), "· 1 Session")
+        XCTAssertEqual(try english("menu.sessions.one"), "· 1 session")
     }
 
     /// Every scope bullet must map to a key; a typo'd key silently renders

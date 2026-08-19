@@ -92,10 +92,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               event.eventID == AEEventID(kAEQuitApplication),
               let reason = event.attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason))
         else { return false }
-        switch reason.enumCodeValue {
-        case UInt32(kAELogOut), UInt32(kAEReallyLogOut),
-             UInt32(kAEShowRestartDialog), UInt32(kAERestart),
-             UInt32(kAEShowShutdownDialog), UInt32(kAEShutDown):
+        return AppDelegate.isSystemQuitReason(reason.enumCodeValue)
+    }
+
+    /// The six reasons macOS gives for quitting an app on its own. Split out
+    /// as a pure function because the event side cannot be driven from a
+    /// test, and a wrong verdict here is the one that hurts: it would put a
+    /// modal in front of a logout. An unrecognized reason asks, which is the
+    /// harmless direction.
+    static func isSystemQuitReason(_ code: OSType) -> Bool {
+        switch code {
+        case OSType(kAELogOut), OSType(kAEReallyLogOut),
+             OSType(kAEShowRestartDialog), OSType(kAERestart),
+             OSType(kAEShowShutdownDialog), OSType(kAEShutDown):
             return true
         default:
             return false
@@ -104,7 +113,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let manager, manager.anyActive else { return .terminateNow }
-        // Nothing has been signalled yet, so cancelling here is complete.
+        // Asked before stopAll: no server has been signalled yet, so
+        // .terminateCancel leaves every one of them running.
         if !isSystemInitiatedQuit,
            !SessionAlert.confirm(scope: .quit, entries: manager.activeSessionEntries)
         {

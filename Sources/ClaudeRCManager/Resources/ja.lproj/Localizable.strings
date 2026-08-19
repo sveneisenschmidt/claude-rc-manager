@@ -18,6 +18,8 @@
 "menu.openLog" = "ログを開く";
 "menu.settings" = "設定…";
 "menu.remove" = "取り除く…";
+"menu.sessions.one" = "· セッション1件";
+"menu.sessions.other" = "· セッション%d件";
 
 /* MARK: warning rows */
 "warning.cliNotFound" = "⚠️ claude CLIが見つかりません — Claude Codeをインストールしてください";
@@ -70,29 +72,25 @@
 "alert.remove.body" = "サーバを停止し、フォルダをリストから取り除きます。ログファイルは残ります。";
 "alert.remove.confirm" = "取り除く";
 "alert.remove.cancel" = "キャンセル";
+"alert.remove.sessions.one" = "このフォルダにはアクティブなセッションが1件あります。サーバーとともに終了します。";
+"alert.remove.sessions.other" = "このフォルダにはアクティブなセッションが%d件あります。サーバーとともに終了します。";
 "alert.duplicateFolder.title" = "フォルダはすでに追加されています";
 "alert.saveFailed.title" = "設定を保存できませんでした";
 "alert.saveFailed.unreadable" = "既存のconfig.jsonを読み込むことも退避することもできなかったため、上書きしていません。変更は終了するまで有効です。";
 "alert.saveFailed.body" = "%@変更は終了するまで有効です。";
 "alert.loginItem.title" = "ログイン項目を変更できませんでした";
 "alert.loginItem.requiresApproval" = "システム設定 > 一般 > ログイン項目でClaude RC Managerを許可してください。";
+"alert.sessions.quit.title.one" = "アクティブなセッションが1件あります。終了しますか？";
+"alert.sessions.quit.title.other" = "アクティブなセッションが%d件あります。終了しますか？";
+"alert.sessions.stop.title.one" = "アクティブなセッションが1件あります。停止しますか？";
+"alert.sessions.stop.title.other" = "アクティブなセッションが%d件あります。停止しますか？";
+"alert.sessions.body.list" = "対象フォルダ：%@。実行中のセッションはすぐに終了します。";
+"alert.sessions.body" = "実行中のセッションはすぐに終了します。";
+"alert.sessions.confirm.quit" = "それでも終了";
+"alert.sessions.confirm.stop" = "それでも停止";
+"alert.sessions.cancel" = "キャンセル";
 
 /* MARK: accessibility (the app name is a product name and stays fixed) */
 "a11y.warning" = "Claude RC Manager — 警告";
 "a11y.active" = "Claude RC Manager — アクティブ";
 "a11y.idle" = "Claude RC Manager — 待機中";
-
-/* MARK: active-session warning */
-"alert.sessions.quit.title.one" = "アクティブなセッションが1件あります。終了しますか？";
-"alert.sessions.quit.title.other" = "アクティブなセッションが%d件あります。終了しますか？";
-"alert.sessions.stop.title.one" = "アクティブなセッションが1件あります。停止しますか？";
-"alert.sessions.stop.title.other" = "アクティブなセッションが%d件あります。停止しますか？";
-"alert.sessions.body.list" = "対象: %@。実行中のスマートフォンのセッションはすぐに終了します。";
-"alert.sessions.body" = "実行中のスマートフォンのセッションはすぐに終了します。";
-"alert.sessions.confirm.quit" = "終了する";
-"alert.sessions.confirm.stop" = "停止する";
-"alert.sessions.cancel" = "キャンセル";
-"alert.remove.sessions.one" = "このフォルダにはアクティブなセッションが1件あります。サーバーとともに終了します。";
-"alert.remove.sessions.other" = "このフォルダにはアクティブなセッションが%d件あります。サーバーとともに終了します。";
-"menu.sessions.one" = "· 1 セッション";
-"menu.sessions.other" = "· %d セッション";

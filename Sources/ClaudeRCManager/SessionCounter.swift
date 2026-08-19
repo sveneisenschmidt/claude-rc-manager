@@ -7,8 +7,9 @@ import Foundation
 /// sits behind a lock. `onChange` is called on the feeding thread and only
 /// when the number actually changes; the receiver hops to the main actor.
 final class SessionCounter: @unchecked Sendable {
-    /// Characters kept from the end of a chunk so a `Capacity: 2/32` split
-    /// across two reads is still matched. Comfortably longer than the match.
+    /// Characters kept from the end of a chunk, so a `Capacity: 2/32` split
+    /// across two reads is still matched. Ten times the longest match this
+    /// looks for, which also covers an escape sequence caught mid-flight.
     static let carryOver = 256
 
     private static let pattern = try! NSRegularExpression(
@@ -38,8 +39,10 @@ final class SessionCounter: @unchecked Sendable {
         var report: Int?
         lock.lock()
         // Filtering first: the stream carries ANSI escapes, which can sit
-        // between "Capacity:" and the digits. Re-filtering the carried-over
-        // tail is harmless, it holds no escapes any more.
+        // between "Capacity:" and the digits. The carried-over tail is
+        // filtered again, which it needs: an escape sequence cut in half by
+        // the read boundary survives the first pass and is only removable
+        // once the rest of it has arrived.
         let text = LogWriter.filter(pending + String(decoding: chunk, as: UTF8.self))
         if let value = Self.lastCount(in: text), value != count {
             count = value
