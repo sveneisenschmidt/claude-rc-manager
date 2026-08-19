@@ -153,8 +153,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         }
         menu.addItem(loginItem)
 
+        // Not wired to NSApplication.terminate(_:) — see quitApp(). Measured
+        // on macOS 26: the standard selector makes AppKit draw an automatic
+        // glyph, and macOS 26 indents only decorated items, so that single
+        // glyph pushed both the Quit title and the checked "start at login"
+        // title right while the undecorated items stayed put.
         let quit = NSMenuItem(title: L10n.t("menu.quit"),
-                              action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+                              action: #selector(quitApp), keyEquivalent: "q")
+        quit.target = self
         menu.addItem(quit)
     }
 
@@ -320,6 +326,12 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func stopAllAction() { manager.stopAll() }
+
+    /// Quit goes through our own selector rather than the standard
+    /// `terminate:` action so macOS 26 does not decorate the item with an
+    /// automatic glyph; the termination path (and applicationShouldTerminate)
+    /// is otherwise identical, and ⌘Q still works from the open menu.
+    @objc private func quitApp() { NSApp.terminate(nil) }
 
     @objc private func toggleLoginItem() {
         if let message = LoginItem.toggle() {
