@@ -48,7 +48,8 @@ Preconditions (documented in README, not enforced by the app):
 
 SwiftPM executable, runs as accessory app (`LSUIElement = true`, no Dock
 icon). App name **Claude RC Manager**, bundle ID
-`com.sveneisenschmidt.claude-rc-manager`. UI language: English.
+`com.sveneisenschmidt.claude-rc-manager`. UI language: localized (see
+2026-08-19-localization-design.md); English is the base.
 
 Hybrid UI: AppKit `NSStatusItem`/`NSMenu` for the menu bar (reliable dynamic
 submenus and per-item state), SwiftUI forms hosted in `NSWindow` via
@@ -195,7 +196,7 @@ folder; stdin, stdout and stderr are the pty slave.
   Stop therefore always escalates: SIGTERM (kept: harmless and future-proof),
   then SIGKILL after the 5 s grace period.
 - Exit is observed with a `DispatchSource` process source plus a `waitpid`
-  reap; the reported value is shown as `exited (status N)` — the exit code
+  reap; the reported value is shown as `exited, status N` — the exit code
   for a normal exit, the raw signal number for a signal death, so 9 can mean
   "exit 9" or "SIGKILL"; the label does not claim to distinguish them.
 

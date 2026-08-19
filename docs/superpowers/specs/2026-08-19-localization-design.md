@@ -77,7 +77,8 @@ lookup, bundle-at-app-root breaks codesign). Therefore:
   incomplete (checks all seven `.lproj` dirs contain
   `Localizable.strings`).
 - **`InfoPlist.strings`** per language are hand-maintained in the repo
-  (`Resources/<lang>.lproj/InfoPlist.strings`) and copied by `make app`
+  (`Resources/InfoPlist/<lang>.lproj/InfoPlist.strings`, lowercase
+  `zh-hans`) and copied by `make app`
   into the same `Contents/Resources/<lang>.lproj/` directories. Verified:
   macOS reads the localized info dictionary from there; TCC purpose
   strings come from it. (Manual TCC verification is unreliable with

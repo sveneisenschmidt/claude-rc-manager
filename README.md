@@ -39,6 +39,9 @@ data.
 
 ## Usage
 
+The app follows the macOS system language and is available in English,
+German, French, Spanish, Italian, Japanese, and Simplified Chinese.
+
 Click the terminal icon in the menu bar:
 
 - **Add Folder…** — pick a project folder; a settings window opens.
