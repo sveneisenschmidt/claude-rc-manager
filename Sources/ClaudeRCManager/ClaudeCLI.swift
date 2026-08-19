@@ -80,10 +80,18 @@ final class ClaudeCLI: @unchecked Sendable {
                 usleep(50_000)
             }
             if p.isRunning {
+                // Microsecond TOCTOU vs pid recycling is accepted here: the
+                // pid was checked via isRunning just above, and this is a
+                // short-lived helper we spawned ourselves — unlike the
+                // long-lived inner server pid, which ProcessLauncher guards
+                // with a start-time identity check.
                 Darwin.kill(p.processIdentifier, SIGKILL)
             }
+            // No explicit close(): clearing the handler cancels the dispatch
+            // source, and Pipe closes the fd on dealloc. An explicit close
+            // could race an in-flight handler's availableData (EBADF raises
+            // an uncatchable ObjC exception).
             readHandle.readabilityHandler = nil
-            try? readHandle.close()
             return nil
         }
 
