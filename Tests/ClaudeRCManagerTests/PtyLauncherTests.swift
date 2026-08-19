@@ -18,6 +18,22 @@ private final class LockedData: @unchecked Sendable {
     }
 }
 
+/// Counts exit callbacks from the launcher's queue. A counter, not an
+/// XCTestExpectation: a second fulfillment of a one-shot expectation is what
+/// this asserts must never happen, and that would fail the run by crashing it.
+private final class ExitCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    func increment() {
+        lock.lock(); count += 1; lock.unlock()
+    }
+
+    var value: Int {
+        lock.lock(); defer { lock.unlock() }; return count
+    }
+}
+
 final class PtyLauncherTests: XCTestCase {
     /// True once `pid` no longer exists (kill 0 asks without signaling).
     private func waitUntilGone(_ pid: pid_t, timeout: TimeInterval = 3) -> Bool {
@@ -88,6 +104,78 @@ final class PtyLauncherTests: XCTestCase {
 
         server.stop(gracePeriod: 1)
         XCTAssertTrue(waitUntilGone(pid), "child must be gone after stop")
+    }
+
+    /// A stop must outlive its owner: ServerManager drops the ServerProcess
+    /// (and with it the only strong reference to the server) as soon as a
+    /// folder is removed, right after asking it to stop. A weak capture in the
+    /// stop path loses both the TERM and the SIGKILL escalation and leaves the
+    /// CLI running forever.
+    func testStopSurvivesOwnerRelease() throws {
+        let launcher = PtyLauncher()
+        var server: RunningServer? = try launcher.launch(
+            argv: ["/bin/sleep", "30"],
+            workingDirectory: NSTemporaryDirectory(),
+            onOutput: { _ in },
+            onExit: { _ in })
+        let pid = try XCTUnwrap(server?.innerPid)
+
+        server?.stop(gracePeriod: 0.2)
+        server = nil  // owner gone before the escalation fires
+
+        XCTAssertTrue(waitUntilGone(pid),
+                      "the escalation must survive the owner being released")
+    }
+
+    /// ServerProcess treats the exit callback as the end of a run (it releases
+    /// the log writer and may schedule a restart), so a second call would act
+    /// on the next run. The probe and the process source both race to report
+    /// the same exit; exactly one of them may win.
+    func testExitIsReportedExactlyOnce() throws {
+        let counter = ExitCounter()
+        let launcher = PtyLauncher()
+        let server = try launcher.launch(
+            argv: ["/bin/echo", "bye"],
+            workingDirectory: NSTemporaryDirectory(),
+            onOutput: { _ in },
+            onExit: { _ in counter.increment() })
+        let pid = try XCTUnwrap(server.innerPid)
+        XCTAssertTrue(waitUntilGone(pid), "child must exit on its own")
+
+        // Redundant stop/kill after the exit: neither may produce a second
+        // report (nor signal a recycled pid).
+        server.stop(gracePeriod: 0.1)
+        server.kill()
+        usleep(600_000)
+        XCTAssertEqual(counter.value, 1, "onExit must fire exactly once")
+    }
+
+    /// Every server's pty master must stay inside this process: a leaked
+    /// master in another server's child holds the first server's pty open for
+    /// as long as that child lives.
+    func testChildDoesNotInheritOtherServersDescriptors() throws {
+        let launcher = PtyLauncher()
+        let first = try launcher.launch(
+            argv: ["/bin/cat"],  // keeps its pty (and its master) alive
+            workingDirectory: NSTemporaryDirectory(),
+            onOutput: { _ in }, onExit: { _ in })
+        defer { first.stop(gracePeriod: 0.1) }
+
+        let listing = LockedData()
+        let exited = expectation(description: "exit")
+        _ = try launcher.launch(
+            argv: ["/bin/sh", "-c", "ls -l /dev/fd"],
+            workingDirectory: NSTemporaryDirectory(),
+            onOutput: { listing.append($0) },
+            onExit: { _ in exited.fulfill() })
+        wait(for: [exited], timeout: 10)
+
+        // Only the child's own stdio may be a terminal; `ls` contributes a
+        // couple of plain directory descriptors of its own. A leaked master
+        // (or slave) would show up as a fourth tty-owned character device.
+        let output = String(decoding: listing.snapshot(), as: UTF8.self)
+        let ttys = output.components(separatedBy: "tty").count - 1
+        XCTAssertEqual(ttys, 3, "child inherited a pty it should not have:\n\(output)")
     }
 
     /// End to end through the real pipeline: pty output -> onOutput -> LogWriter
