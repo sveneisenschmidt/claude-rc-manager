@@ -53,10 +53,7 @@ Click the terminal icon in the menu bar:
 ## Limitations
 
 - Force-quitting the app leaves servers running (regular quit stops them).
-- Downloaded release builds are not notarized; macOS will block the first
-  launch. Either build from source (`make install`) or clear the quarantine
-  flag: `xattr -d com.apple.quarantine "/Applications/Claude RC Manager.app"`.
-  Developer-ID signing + notarization is a planned follow-up.
+- There are no downloadable releases; build from source with `make install`.
 
 ## Development
 
