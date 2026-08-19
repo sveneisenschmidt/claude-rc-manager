@@ -26,7 +26,7 @@ final class LogWriter {
         pattern: "\u{1B}\\[[0-?]*[ -/]*[@-~]"
             + "|\u{1B}\\][^\u{07}\u{1B}]*(?:\u{07}|\u{1B}\\\\)"
             + "|\u{1B}[ -/]*[0-Z\\\\^-~]"
-            + "|[\r\u{08}]"
+            + "|[\r\u{08}\u{04}]"  // CR, BS, and the pty's echoed EOT (^D)
     )
 
     static func filter(_ text: String) -> String {
