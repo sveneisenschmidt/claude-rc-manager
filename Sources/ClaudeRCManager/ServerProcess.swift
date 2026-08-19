@@ -113,7 +113,10 @@ final class ServerProcess {
                 argv: argv, workingDirectory: folder.path,
                 onOutput: { [writer] data in writer?.append(data) },
                 onExit: { [weak self] status in
-                    Task { @MainActor in self?.handleExit(status: status) }
+                    // Inner capture list copies the weak binding: older
+                    // compilers (CI's macos-14 Swift) reject referencing the
+                    // outer mutable weak var from a concurrent closure.
+                    Task { @MainActor [weak self] in self?.handleExit(status: status) }
                 })
             self.server = server
             launchedFolder = folder

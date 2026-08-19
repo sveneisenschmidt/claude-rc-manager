@@ -77,7 +77,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             _ = cli.resolveBinary()
             let loggedIn = cli.isLoggedIn()
             let external = ExternalServerScanner.scan(excluding: ownPids)
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 self?.isRefreshing = false
                 self?.cachedLoggedIn = loggedIn
                 self?.externalServers = external
@@ -240,7 +240,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             DispatchQueue.global().async { [weak self, cli] in
                 let path = cli.resolveBinary()
                 let loggedIn = cli.isLoggedIn()
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
                     self?.cachedLoggedIn = loggedIn
                     self?.manager.start(id: id, claudePath: path, loggedIn: loggedIn)
                 }
@@ -312,7 +312,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         DispatchQueue.global().async { [weak self, cli] in
             let path = cli.resolveBinary()
             let loggedIn = cli.isLoggedIn()
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 self?.cachedLoggedIn = loggedIn
                 self?.manager.startAll(claudePath: path, loggedIn: loggedIn)
             }
