@@ -9,7 +9,7 @@ import Foundation
 /// ends on a safe boundary is written; the rest is carried over in `pending`.
 /// Thread-safe: `append` arrives on the pty pump's background queue while
 /// `close` runs from the main actor, so all mutable state sits behind a lock.
-final class LogWriter {
+final class LogWriter: @unchecked Sendable {
     private let handle: FileHandle
     private let lock = NSLock()
     private var pending = Data()

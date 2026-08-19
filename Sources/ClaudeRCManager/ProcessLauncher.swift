@@ -19,10 +19,10 @@ protocol RunningServer: AnyObject {
 protocol ProcessLaunching {
     /// `onOutput` is called with raw pty chunks on a reader thread; `onExit`
     /// once with script's status when the process tree exits. Both are
-    /// installed before the process starts.
+    /// installed before the process starts and cross threads (@Sendable).
     func launch(argv: [String], workingDirectory: String,
-                onOutput: @escaping (Data) -> Void,
-                onExit: @escaping (Int32) -> Void) throws -> RunningServer
+                onOutput: @escaping @Sendable (Data) -> Void,
+                onExit: @escaping @Sendable (Int32) -> Void) throws -> RunningServer
 }
 
 /// Real launcher: runs `script -q /dev/null ...`. Verified reality (spec:
@@ -30,7 +30,8 @@ protocol ProcessLaunching {
 /// process group, so signals must target the inner pid, which we resolve
 /// via pgrep -P. stdin is /dev/null (script fails on socket stdin).
 final class ScriptLauncher: ProcessLaunching {
-    final class Server: RunningServer {
+    /// @unchecked: mutable state is lock-protected or queue-confined.
+    final class Server: RunningServer, @unchecked Sendable {
         let process = Process()
         private let queue = DispatchQueue(label: "server-process")
         private let lock = NSLock()
@@ -69,13 +70,23 @@ final class ScriptLauncher: ProcessLaunching {
         /// to the process we resolved. Between resolution and signaling the
         /// inner process can exit and its pid be reused, and killpg against a
         /// stranger's process group cannot be taken back.
+        ///
+        /// When no start time was recorded (proc_pidinfo failed at resolve
+        /// time), script's liveness is the identity proof: while script is
+        /// alive, its child or its unreaped zombie still owns that pid, so
+        /// recycling is impossible. Refusing to signal in that case would
+        /// silently orphan a TERM-trapping inner claude.
         private func signalInnerGroup(_ signal: Int32) {
             lock.lock()
             let pid = _innerPid
             let recorded = _innerStart
             lock.unlock()
-            guard let pid, let recorded,
-                  let current = Self.startTime(of: pid), current == recorded else { return }
+            guard let pid else { return }
+            if let recorded {
+                guard let current = Self.startTime(of: pid), current == recorded else { return }
+            } else if !process.isRunning {
+                return  // no identity proof and script is gone: refuse to guess
+            }
             killpg(pid, signal)
         }
 
@@ -131,11 +142,10 @@ final class ScriptLauncher: ProcessLaunching {
                     guard let self else { return }
                     // script exits as soon as its child detaches, so its
                     // liveness says nothing about the inner claude: escalate
-                    // on the inner pid (kill 0 = existence probe), which a
-                    // TERM-trapping child keeps alive past the grace period.
-                    if let pid = self.innerPid, Darwin.kill(pid, 0) == 0 {
-                        self.signalInnerGroup(SIGKILL)
-                    }
+                    // on the inner pid, which a TERM-trapping child keeps
+                    // alive past the grace period. signalInnerGroup carries
+                    // its own existence/identity check.
+                    self.signalInnerGroup(SIGKILL)
                     if self.process.isRunning { self.kill() }
                 }
             }
@@ -151,8 +161,8 @@ final class ScriptLauncher: ProcessLaunching {
     }
 
     func launch(argv: [String], workingDirectory: String,
-                onOutput: @escaping (Data) -> Void,
-                onExit: @escaping (Int32) -> Void) throws -> RunningServer
+                onOutput: @escaping @Sendable (Data) -> Void,
+                onExit: @escaping @Sendable (Int32) -> Void) throws -> RunningServer
     {
         precondition(!argv.isEmpty)
         let server = Server()
