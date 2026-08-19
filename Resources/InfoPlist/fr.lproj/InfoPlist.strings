@@ -1,0 +1,4 @@
+/* French. Technical terms stay verbatim (claude, Terminal, the product
+   name); the CLI command is set off with backticks, matching the
+   convention already used in Localizable.strings. */
+"NSAppleEventsUsageDescription" = "Claude RC Manager ouvre Terminal pour exécuter `claude auth login` lorsque Claude n'est pas connecté.";

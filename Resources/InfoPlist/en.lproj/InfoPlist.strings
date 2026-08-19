@@ -1,0 +1,3 @@
+/* English base. Mirrors the value already in Info.plist (the strings
+   file overrides, it does not supply). */
+"NSAppleEventsUsageDescription" = "Claude RC Manager opens Terminal to run \"claude auth login\" when you are not logged in.";

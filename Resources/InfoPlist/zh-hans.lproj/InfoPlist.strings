@@ -1,0 +1,4 @@
+/* Simplified Chinese. Technical terms stay verbatim (claude, 终端, the
+   product name); a space between Chinese text and embedded Latin terms,
+   matching the convention already used in Localizable.strings. */
+"NSAppleEventsUsageDescription" = "未登录 Claude 时，Claude RC Manager 会打开终端来运行 `claude auth login`。";
