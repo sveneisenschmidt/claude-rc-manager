@@ -4,6 +4,9 @@ A macOS menu-bar app that runs one [`claude remote-control`](https://docs.claude
 server per configured folder, so you can start Claude Code sessions on your
 Mac from the Claude mobile app or claude.ai/code.
 
+<img src="docs/screenshots/menu.png" alt="The menu bar dropdown, listing three folders with running servers" width="323">
+
+
 Servers run in standby by default (`--no-create-session-in-dir`): the server
 holds the folder open, and new sessions are created on demand from your
 phone. Spawn mode (`same-dir`, `worktree`, `session`), capacity, permission
@@ -61,6 +64,10 @@ Click the terminal icon in the menu bar:
 - **External servers** — remote-control processes started outside the app
   are listed read-only.
 - Logs live in `~/Library/Logs/ClaudeRCManager/`.
+
+Each folder carries its own settings:
+
+<img src="docs/screenshots/settings.png" alt="The per-folder settings window with spawn mode, capacity, permission mode and extra arguments" width="532">
 
 ## Limitations
 
