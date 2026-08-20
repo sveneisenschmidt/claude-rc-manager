@@ -1,0 +1,94 @@
+/* German catalog. Keys mirror en.lproj exactly. Status glyphs (○ ● ◐ ✕)
+   are unchanged; only the word is translated. Technical terms the user
+   needs verbatim (claude, Claude Code, claude auth login, Terminal,
+   /Applications, config.json, .bak, worktree) and the product name
+   "Claude RC Manager" stay untranslated. */
+
+/* MARK: menu */
+"menu.addFolder" = "Ordner hinzufügen…";
+"menu.startAll" = "Alle starten";
+"menu.stopAll" = "Alle stoppen";
+"menu.startAtLogin" = "Bei der Anmeldung öffnen";
+"menu.startAtLogin.tooltip" = "Zuerst in /Applications installieren";
+"menu.quit" = "Claude RC Manager beenden";
+"menu.openLogin" = "Im Terminal anmelden…";
+"menu.start" = "Starten";
+"menu.stop" = "Stoppen";
+"menu.openLog" = "Protokoll öffnen";
+"menu.settings" = "Einstellungen…";
+"menu.remove" = "Entfernen…";
+"menu.sessions.one" = "· 1 Sitzung";
+"menu.sessions.other" = "· %d Sitzungen";
+
+/* MARK: warning rows */
+"warning.cliNotFound" = "⚠️ claude CLI nicht gefunden — Claude Code installieren";
+"warning.notLoggedIn" = "⚠️ Bei Claude nicht angemeldet";
+"warning.configCorrupt" = "⚠️ config.json war beschädigt — nach config.json.bak verschoben";
+"warning.configUnreadable" = "⚠️ config.json konnte nicht gelesen oder gesichert werden — Änderungen werden nicht gespeichert";
+
+/* MARK: external servers */
+"external.header" = "Externe Server";
+"external.row" = "%@ — läuft (extern)";
+"external.pidFallback" = "PID %@";
+
+/* MARK: status labels */
+"status.stopped" = "○ gestoppt";
+"status.starting" = "◐ startet";
+"status.running" = "● läuft";
+"status.stopping" = "◐ stoppt";
+"status.restarting" = "◐ startet neu…";
+"status.ended" = "○ beendet";
+"status.failed" = "✕ fehlgeschlagen (%@)";
+
+/* MARK: failure reasons */
+"reason.claudeNotFound" = "claude nicht gefunden";
+"reason.notLoggedIn" = "nicht angemeldet";
+"reason.folderMissing" = "Ordner fehlt";
+"reason.crashLoop" = "Absturzschleife — Protokoll prüfen";
+"reason.launchError" = "Startfehler";
+"reason.exited" = "Exit-Status %d";
+
+/* MARK: settings window */
+"settings.title" = "%@ — Einstellungen";
+"settings.name" = "Name";
+"settings.path" = "Pfad";
+"settings.spawnMode" = "Startmodus";
+"settings.createSessionInDir" = "Sitzung im Ordner vorab anlegen";
+"settings.capacity" = "Kapazität: %@";
+"settings.permissionMode" = "Berechtigungsmodus";
+"settings.permissionMode.cliDefault" = "CLI-Standard";
+"settings.extraArgs" = "Zusätzliche Argumente";
+"settings.autostart" = "Automatisch starten";
+"settings.autoRestart" = "Nach Absturz neu starten";
+"settings.applyHint" = "Änderungen werden beim nächsten Start des Servers wirksam.";
+"settings.save" = "Sichern";
+"settings.cancel" = "Abbrechen";
+
+/* MARK: alerts */
+"alert.terminal.title" = "Terminal konnte nicht geöffnet werden";
+"alert.terminal.body" = "Möglicherweise wurde die Berechtigung für Automation verweigert. Die Berechtigung lässt sich unter Systemeinstellungen > Datenschutz & Sicherheit > Automation erteilen; alternativ `claude auth login` selbst in einem Terminal ausführen.";
+"alert.remove.title" = "„%@“ entfernen?";
+"alert.remove.body" = "Der Server wird gestoppt und der Ordner aus der Liste entfernt. Die Protokolldatei bleibt erhalten.";
+"alert.remove.confirm" = "Entfernen";
+"alert.remove.cancel" = "Abbrechen";
+"alert.remove.sessions.one" = "In diesem Ordner läuft 1 aktive Sitzung. Sie endet mit dem Server.";
+"alert.remove.sessions.other" = "In diesem Ordner laufen %d aktive Sitzungen. Sie enden mit dem Server.";
+"alert.duplicateFolder.title" = "Ordner bereits hinzugefügt";
+"alert.saveFailed.title" = "Einstellungen konnten nicht gesichert werden";
+"alert.saveFailed.unreadable" = "Die vorhandene config.json konnte nicht gelesen oder beiseitegelegt werden und wird deshalb nicht überschrieben. Die Änderungen gelten bis zum Beenden.";
+"alert.saveFailed.body" = "%@ Die Änderungen gelten bis zum Beenden.";
+"alert.loginItem.title" = "Anmeldeobjekt konnte nicht geändert werden";
+"alert.loginItem.requiresApproval" = "Claude RC Manager unter Systemeinstellungen > Allgemein > Anmeldeobjekte erlauben.";
+"alert.sessions.quit.title.one" = "Mit 1 aktiven Sitzung beenden?";
+"alert.sessions.quit.title.other" = "Mit %d aktiven Sitzungen beenden?";
+"alert.sessions.stop.title.one" = "Mit 1 aktiven Sitzung stoppen?";
+"alert.sessions.stop.title.other" = "Mit %d aktiven Sitzungen stoppen?";
+"alert.sessions.body.list" = "Betroffen: %@. Laufende Sitzungen enden sofort.";
+"alert.sessions.confirm.quit" = "Trotzdem beenden";
+"alert.sessions.confirm.stop" = "Trotzdem stoppen";
+"alert.sessions.cancel" = "Abbrechen";
+
+/* MARK: accessibility (the app name is a product name and stays fixed) */
+"a11y.warning" = "Claude RC Manager — Warnung";
+"a11y.active" = "Claude RC Manager — aktiv";
+"a11y.idle" = "Claude RC Manager — inaktiv";

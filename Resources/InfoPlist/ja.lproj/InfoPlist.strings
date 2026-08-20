@@ -1,0 +1,4 @@
+/* Japanese. Technical terms stay verbatim (claude, ターミナル, the product
+   name); no ASCII spaces around embedded Latin terms, matching the
+   convention already used in Localizable.strings. */
+"NSAppleEventsUsageDescription" = "ログインしていないとき、Claude RC Managerはターミナルを開いて`claude auth login`を実行します。";

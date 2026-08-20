@@ -1,0 +1,95 @@
+/* Japanese catalog. Keys mirror en.lproj exactly. Status glyphs (○ ● ◐ ✕)
+   are unchanged; only the word is translated. Technical terms the user
+   needs verbatim (claude, Claude Code, claude auth login, ターミナル,
+   /Applications, config.json, .bak, worktree) and the product name
+   "Claude RC Manager" stay untranslated. Apple's Japanese style: no ASCII
+   spaces around embedded Latin terms, CJK punctuation (、。？). */
+
+/* MARK: menu */
+"menu.addFolder" = "フォルダを追加…";
+"menu.startAll" = "すべてを起動";
+"menu.stopAll" = "すべてを停止";
+"menu.startAtLogin" = "ログイン時に起動";
+"menu.startAtLogin.tooltip" = "先に/Applicationsにインストールしてください";
+"menu.quit" = "Claude RC Managerを終了";
+"menu.openLogin" = "ターミナルでログイン…";
+"menu.start" = "起動";
+"menu.stop" = "停止";
+"menu.openLog" = "ログを開く";
+"menu.settings" = "設定…";
+"menu.remove" = "取り除く…";
+"menu.sessions.one" = "· セッション1件";
+"menu.sessions.other" = "· セッション%d件";
+
+/* MARK: warning rows */
+"warning.cliNotFound" = "⚠️ claude CLIが見つかりません — Claude Codeをインストールしてください";
+"warning.notLoggedIn" = "⚠️ Claudeにログインしていません";
+"warning.configCorrupt" = "⚠️ config.jsonが壊れていました — config.json.bakに移動しました";
+"warning.configUnreadable" = "⚠️ config.jsonを読み込むことも保持することもできません — 変更は保存されません";
+
+/* MARK: external servers */
+"external.header" = "外部サーバ";
+"external.row" = "%@ — 実行中（外部）";
+"external.pidFallback" = "PID %@";
+
+/* MARK: status labels */
+"status.stopped" = "○ 停止済み";
+"status.starting" = "◐ 起動中";
+"status.running" = "● 実行中";
+"status.stopping" = "◐ 停止中";
+"status.restarting" = "◐ 再起動中…";
+"status.ended" = "○ 終了済み";
+"status.failed" = "✕ 失敗（%@）";
+
+/* MARK: failure reasons */
+"reason.claudeNotFound" = "claudeが見つかりません";
+"reason.notLoggedIn" = "ログインしていません";
+"reason.folderMissing" = "フォルダがありません";
+"reason.crashLoop" = "クラッシュを繰り返しています — ログを確認してください";
+"reason.launchError" = "起動エラー";
+"reason.exited" = "ステータス%dで終了";
+
+/* MARK: settings window */
+"settings.title" = "%@ — 設定";
+"settings.name" = "名前";
+"settings.path" = "パス";
+"settings.spawnMode" = "起動モード";
+"settings.createSessionInDir" = "ディレクトリ内にセッションを事前作成";
+"settings.capacity" = "容量：%@";
+"settings.permissionMode" = "権限モード";
+"settings.permissionMode.cliDefault" = "CLIのデフォルト";
+"settings.extraArgs" = "追加の引数";
+"settings.autostart" = "自動的に起動";
+"settings.autoRestart" = "クラッシュ時に再起動";
+"settings.applyHint" = "変更はサーバの次回起動時に適用されます。";
+"settings.save" = "保存";
+"settings.cancel" = "キャンセル";
+
+/* MARK: alerts */
+"alert.terminal.title" = "ターミナルを開けませんでした";
+"alert.terminal.body" = "オートメーションの権限が拒否されている可能性があります。システム設定 > プライバシーとセキュリティ > オートメーションで許可するか、ターミナルで`claude auth login`を自分で実行してください。";
+"alert.remove.title" = "「%@」を取り除きますか？";
+"alert.remove.body" = "サーバを停止し、フォルダをリストから取り除きます。ログファイルは残ります。";
+"alert.remove.confirm" = "取り除く";
+"alert.remove.cancel" = "キャンセル";
+"alert.remove.sessions.one" = "このフォルダにはアクティブなセッションが1件あります。サーバーとともに終了します。";
+"alert.remove.sessions.other" = "このフォルダにはアクティブなセッションが%d件あります。サーバーとともに終了します。";
+"alert.duplicateFolder.title" = "フォルダはすでに追加されています";
+"alert.saveFailed.title" = "設定を保存できませんでした";
+"alert.saveFailed.unreadable" = "既存のconfig.jsonを読み込むことも退避することもできなかったため、上書きしていません。変更は終了するまで有効です。";
+"alert.saveFailed.body" = "%@変更は終了するまで有効です。";
+"alert.loginItem.title" = "ログイン項目を変更できませんでした";
+"alert.loginItem.requiresApproval" = "システム設定 > 一般 > ログイン項目でClaude RC Managerを許可してください。";
+"alert.sessions.quit.title.one" = "アクティブなセッションが1件あります。終了しますか？";
+"alert.sessions.quit.title.other" = "アクティブなセッションが%d件あります。終了しますか？";
+"alert.sessions.stop.title.one" = "アクティブなセッションが1件あります。停止しますか？";
+"alert.sessions.stop.title.other" = "アクティブなセッションが%d件あります。停止しますか？";
+"alert.sessions.body.list" = "対象フォルダ：%@。実行中のセッションはすぐに終了します。";
+"alert.sessions.confirm.quit" = "それでも終了";
+"alert.sessions.confirm.stop" = "それでも停止";
+"alert.sessions.cancel" = "キャンセル";
+
+/* MARK: accessibility (the app name is a product name and stays fixed) */
+"a11y.warning" = "Claude RC Manager — 警告";
+"a11y.active" = "Claude RC Manager — アクティブ";
+"a11y.idle" = "Claude RC Manager — 待機中";

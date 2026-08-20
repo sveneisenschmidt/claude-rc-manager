@@ -1,0 +1,96 @@
+/* Simplified Chinese catalog. Keys mirror en.lproj exactly. Status glyphs
+   (○ ● ◐ ✕) are unchanged; only the word is translated. Technical terms the
+   user needs verbatim (claude, Claude Code, claude auth login, 终端,
+   /Applications, config.json, .bak, worktree) and the product name
+   "Claude RC Manager" stay untranslated. Apple's Simplified Chinese style:
+   a space between Chinese text and embedded Latin terms or numerals, CJK
+   punctuation (，。？). */
+
+/* MARK: menu */
+"menu.addFolder" = "添加文件夹…";
+"menu.startAll" = "全部启动";
+"menu.stopAll" = "全部停止";
+"menu.startAtLogin" = "登录时启动";
+"menu.startAtLogin.tooltip" = "请先安装到 /Applications";
+"menu.quit" = "退出 Claude RC Manager";
+"menu.openLogin" = "在终端中登录…";
+"menu.start" = "启动";
+"menu.stop" = "停止";
+"menu.openLog" = "打开日志";
+"menu.settings" = "设置…";
+"menu.remove" = "移除…";
+"menu.sessions.one" = "· 1 个会话";
+"menu.sessions.other" = "· %d 个会话";
+
+/* MARK: warning rows */
+"warning.cliNotFound" = "⚠️ 未找到 claude CLI — 请安装 Claude Code";
+"warning.notLoggedIn" = "⚠️ Claude 未登录";
+"warning.configCorrupt" = "⚠️ config.json 已损坏 — 已移至 config.json.bak";
+"warning.configUnreadable" = "⚠️ 无法读取或保留 config.json — 更改不会存储";
+
+/* MARK: external servers */
+"external.header" = "外部服务器";
+"external.row" = "%@ — 正在运行（外部）";
+"external.pidFallback" = "PID %@";
+
+/* MARK: status labels */
+"status.stopped" = "○ 已停止";
+"status.starting" = "◐ 正在启动";
+"status.running" = "● 正在运行";
+"status.stopping" = "◐ 正在停止";
+"status.restarting" = "◐ 正在重新启动…";
+"status.ended" = "○ 已结束";
+"status.failed" = "✕ 失败（%@）";
+
+/* MARK: failure reasons */
+"reason.claudeNotFound" = "未找到 claude";
+"reason.notLoggedIn" = "未登录";
+"reason.folderMissing" = "文件夹不存在";
+"reason.crashLoop" = "反复崩溃 — 请查看日志";
+"reason.launchError" = "启动错误";
+"reason.exited" = "已退出，状态 %d";
+
+/* MARK: settings window */
+"settings.title" = "%@ — 设置";
+"settings.name" = "名称";
+"settings.path" = "路径";
+"settings.spawnMode" = "启动模式";
+"settings.createSessionInDir" = "在目录中预先创建会话";
+"settings.capacity" = "容量：%@";
+"settings.permissionMode" = "权限模式";
+"settings.permissionMode.cliDefault" = "CLI 默认值";
+"settings.extraArgs" = "额外参数";
+"settings.autostart" = "自动启动";
+"settings.autoRestart" = "崩溃后重新启动";
+"settings.applyHint" = "更改将在服务器下次启动时生效。";
+"settings.save" = "存储";
+"settings.cancel" = "取消";
+
+/* MARK: alerts */
+"alert.terminal.title" = "无法打开终端";
+"alert.terminal.body" = "自动化权限可能已被拒绝。请在系统设置 > 隐私与安全性 > 自动化中允许，或自行在终端中运行 `claude auth login`。";
+"alert.remove.title" = "要移除“%@”吗？";
+"alert.remove.body" = "将停止服务器，并将文件夹从列表中移除。日志文件将保留。";
+"alert.remove.confirm" = "移除";
+"alert.remove.cancel" = "取消";
+"alert.remove.sessions.one" = "此文件夹有 1 个活动会话，会随服务器一起结束。";
+"alert.remove.sessions.other" = "此文件夹有 %d 个活动会话，会随服务器一起结束。";
+"alert.duplicateFolder.title" = "文件夹已添加";
+"alert.saveFailed.title" = "无法存储设置";
+"alert.saveFailed.unreadable" = "现有的 config.json 无法读取，也无法移开备份，因此不会覆盖。";
+"alert.saveFailed.body" = "%@更改在退出前有效。";
+"alert.loginItem.title" = "无法更改登录项";
+"alert.loginItem.requiresApproval" = "请在系统设置 > 通用 > 登录项中允许 Claude RC Manager。";
+"alert.sessions.quit.title.one" = "有 1 个活动会话，仍要退出吗？";
+"alert.sessions.quit.title.other" = "有 %d 个活动会话，仍要退出吗？";
+"alert.sessions.stop.title.one" = "有 1 个活动会话，仍要停止吗？";
+"alert.sessions.stop.title.other" = "有 %d 个活动会话，仍要停止吗？";
+"alert.sessions.body.list" = "受影响的文件夹：%@。正在进行的会话会立即结束。";
+"alert.sessions.confirm.quit" = "仍然退出";
+"alert.sessions.confirm.stop" = "仍然停止";
+"alert.sessions.cancel" = "取消";
+
+/* MARK: accessibility (the app name is a product name and stays fixed) */
+"a11y.warning" = "Claude RC Manager — 警告";
+"a11y.active" = "Claude RC Manager — 活跃";
+"a11y.idle" = "Claude RC Manager — 空闲";

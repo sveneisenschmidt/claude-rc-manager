@@ -1,0 +1,93 @@
+/* English base catalog. Keys: <area>.<item>[.<variant>], lowercase areas.
+   Status glyphs (○ ● ◐ ✕) are part of the value so translators see the
+   full label. Format specifiers use %@ / %d; use positional forms
+   (%1$@) in translations that reorder arguments. */
+
+/* MARK: menu */
+"menu.addFolder" = "Add Folder…";
+"menu.startAll" = "Start All";
+"menu.stopAll" = "Stop All";
+"menu.startAtLogin" = "Start at Login";
+"menu.startAtLogin.tooltip" = "Install to /Applications first";
+"menu.quit" = "Quit Claude RC Manager";
+"menu.openLogin" = "Open login in Terminal…";
+"menu.start" = "Start";
+"menu.stop" = "Stop";
+"menu.openLog" = "Open Log";
+"menu.settings" = "Settings…";
+"menu.remove" = "Remove…";
+"menu.sessions.one" = "· 1 session";
+"menu.sessions.other" = "· %d sessions";
+
+/* MARK: warning rows */
+"warning.cliNotFound" = "⚠️ claude CLI not found — install Claude Code";
+"warning.notLoggedIn" = "⚠️ Claude not logged in";
+"warning.configCorrupt" = "⚠️ config.json was corrupt — moved to config.json.bak";
+"warning.configUnreadable" = "⚠️ config.json could not be read or preserved — changes are not saved";
+
+/* MARK: external servers */
+"external.header" = "External servers";
+"external.row" = "%@ — running (external)";
+"external.pidFallback" = "pid %@";
+
+/* MARK: status labels */
+"status.stopped" = "○ stopped";
+"status.starting" = "◐ starting";
+"status.running" = "● running";
+"status.stopping" = "◐ stopping";
+"status.restarting" = "◐ restarting…";
+"status.ended" = "○ ended";
+"status.failed" = "✕ failed (%@)";
+
+/* MARK: failure reasons (internal identifiers stay English) */
+"reason.claudeNotFound" = "claude not found";
+"reason.notLoggedIn" = "not logged in";
+"reason.folderMissing" = "folder missing";
+"reason.crashLoop" = "crash loop — check log";
+"reason.launchError" = "launch error";
+"reason.exited" = "exited, status %d";
+
+/* MARK: settings window */
+"settings.title" = "%@ — Settings";
+"settings.name" = "Name";
+"settings.path" = "Path";
+"settings.spawnMode" = "Spawn mode";
+"settings.createSessionInDir" = "Pre-create session in directory";
+"settings.capacity" = "Capacity: %@";
+"settings.permissionMode" = "Permission mode";
+"settings.permissionMode.cliDefault" = "CLI default";
+"settings.extraArgs" = "Extra arguments";
+"settings.autostart" = "Start automatically";
+"settings.autoRestart" = "Restart on crash";
+"settings.applyHint" = "Changes apply the next time the server starts.";
+"settings.save" = "Save";
+"settings.cancel" = "Cancel";
+
+/* MARK: alerts */
+"alert.terminal.title" = "Could not open Terminal";
+"alert.terminal.body" = "Automation permission may be denied. Allow it in System Settings > Privacy & Security > Automation, or run `claude auth login` in a terminal yourself.";
+"alert.remove.title" = "Remove “%@”?";
+"alert.remove.body" = "The server is stopped and the folder removed from the list. The log file is kept.";
+"alert.remove.confirm" = "Remove";
+"alert.remove.cancel" = "Cancel";
+"alert.remove.sessions.one" = "This folder has 1 active session. It ends with the server.";
+"alert.remove.sessions.other" = "This folder has %d active sessions. They end with the server.";
+"alert.duplicateFolder.title" = "Folder already added";
+"alert.saveFailed.title" = "Could not save settings";
+"alert.saveFailed.unreadable" = "The existing config.json could not be read or moved aside, so it is not overwritten. Changes apply until you quit.";
+"alert.saveFailed.body" = "%@ Changes apply until you quit.";
+"alert.loginItem.title" = "Could not change login item";
+"alert.loginItem.requiresApproval" = "Approve Claude RC Manager in System Settings > General > Login Items.";
+"alert.sessions.quit.title.one" = "Quit with 1 active session?";
+"alert.sessions.quit.title.other" = "Quit with %d active sessions?";
+"alert.sessions.stop.title.one" = "Stop with 1 active session?";
+"alert.sessions.stop.title.other" = "Stop with %d active sessions?";
+"alert.sessions.body.list" = "Affected: %@. Running sessions end immediately.";
+"alert.sessions.confirm.quit" = "Quit Anyway";
+"alert.sessions.confirm.stop" = "Stop Anyway";
+"alert.sessions.cancel" = "Cancel";
+
+/* MARK: accessibility (the app name is a product name and stays fixed) */
+"a11y.warning" = "Claude RC Manager — warning";
+"a11y.active" = "Claude RC Manager — active";
+"a11y.idle" = "Claude RC Manager — idle";
